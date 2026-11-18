@@ -85,6 +85,14 @@ Copias el link que te da la ejecución:
     http://127.0.0.1:5000/html/login.html
 A mi me aparece que se ejecuta en el puerto :5000, pero puede variar.
 
+## Ver BD en localhost
+Abres una nueva consola con Shift + Ctrl + Ñ (de preferencia sin cerrar la consola de app.py)
+y te vas a meter al entorno virtual y vas a poner el siguiente comando:
+```bash
+    sqlite_web backend/servicio_social.db -p 8080
+```
+copias el link que te da, normalmente es http://127.0.0.1:8080 y lo pegas en el navegador.
+
 ## GIT IGNORE
 El entorno virtual lo tiene que instalar cada persona ya que es pesado y tiene muchos archivos, los pasos están arriba.
 
