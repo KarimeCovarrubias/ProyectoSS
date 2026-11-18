@@ -1,0 +1,541 @@
+:root {
+    --tecnm-azul: #1B396A;
+    --tecnm-azul-oscuro: #122647;
+    --tecnm-azul-claro: #2B5496;
+    --tecnm-dorado: #D4AF37;
+    --fondo-pagina: #F4F6F9;
+    --fondo-tarjeta: #FFFFFF;
+    --texto-principal: #1E293B;
+    --texto-secundario: #64748B;
+    --borde-suave: #E2E8F0;
+    --borde-input: #CBD5E1;
+    --sombra-suave: 0 2px 8px rgba(15, 23, 42, 0.06);
+    --radio: 8px;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: 'Segoe UI', system-ui, -apple-system, Roboto, sans-serif;
+    background-color: var(--fondo-pagina);
+    color: var(--texto-principal);
+    line-height: 1.5;
+}
+
+/* --------------------------------------------------------------------------
+   Barra Superior y Sidebar
+   -------------------------------------------------------------------------- */
+.topbar {
+    background-color: var(--tecnm-azul);
+    color: #FFFFFF;
+    height: 64px;
+    padding: 0 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 3px solid var(--tecnm-dorado);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+}
+
+.topbar-left {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.logo-header {
+    height: 40px;
+    width: auto;
+    background-color: #FFFFFF;
+    padding: 3px 6px;
+    border-radius: 4px;
+}
+
+.titulo-sistema {
+    font-size: 1.05rem;
+    font-weight: 600;
+}
+
+.topbar-right {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    font-size: 0.875rem;
+}
+
+.rol-header {
+    color: #E2E8F0;
+    font-weight: 500;
+}
+
+#admin-nombre {
+    color: #FFFFFF;
+    font-weight: 700;
+}
+
+.btn-salir {
+    background-color: rgba(255, 255, 255, 0.14);
+    color: #FFFFFF;
+    text-decoration: none;
+    padding: 6px 14px;
+    border-radius: 6px;
+    font-weight: 600;
+    font-size: 0.85rem;
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    transition: background-color 0.2s, border-color 0.2s;
+}
+
+.btn-salir:hover {
+    background-color: #DC2626;
+    border-color: #DC2626;
+}
+
+.layout {
+    display: flex;
+    min-height: calc(100vh - 64px);
+}
+
+.sidebar {
+    width: 250px;
+    background-color: var(--fondo-tarjeta);
+    border-right: 1px solid var(--borde-suave);
+    padding: 20px 12px;
+    flex-shrink: 0;
+}
+
+.menu {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.menu-item {
+    display: block;
+    padding: 11px 16px;
+    color: var(--texto-principal);
+    text-decoration: none;
+    border-radius: 6px;
+    font-weight: 500;
+    font-size: 0.95rem;
+    transition: all 0.2s;
+}
+
+.menu-item:hover {
+    background-color: #EEF2F6;
+    color: var(--tecnm-azul);
+}
+
+.menu-item.active {
+    background-color: var(--tecnm-azul);
+    color: #FFFFFF;
+    font-weight: 600;
+}
+
+.main-content {
+    flex: 1;
+    padding: 28px 32px;
+    max-width: 1280px;
+    margin: 0 auto;
+    width: 100%;
+}
+
+.page-title {
+    font-size: 1.55rem;
+    color: var(--tecnm-azul);
+    margin-bottom: 20px;
+    font-weight: 700;
+}
+
+.card-panel {
+    background-color: var(--fondo-tarjeta);
+    border: 1px solid var(--borde-suave);
+    border-radius: var(--radio);
+    padding: 24px;
+    margin-bottom: 24px;
+    box-shadow: var(--sombra-suave);
+}
+
+.section-subtitle {
+    font-size: 1.15rem;
+    color: var(--tecnm-azul);
+    font-weight: 600;
+    margin-bottom: 18px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--borde-suave);
+}
+
+/* --------------------------------------------------------------------------
+   Formulario de Registro
+   -------------------------------------------------------------------------- */
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 18px;
+    margin-bottom: 16px;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.form-group label {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--texto-principal);
+}
+
+.form-group input[type="text"],
+.form-group input[type="email"],
+.form-group input[type="number"],
+.form-group select {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--borde-input);
+    border-radius: 6px;
+    font-size: 0.925rem;
+    font-family: inherit;
+    color: var(--texto-principal);
+    background-color: #FFFFFF;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.form-group input:focus,
+.form-group select:focus {
+    outline: none;
+    border-color: var(--tecnm-azul);
+    box-shadow: 0 0 0 3px rgba(27, 57, 106, 0.14);
+}
+
+.form-group input[type="file"] {
+    padding: 7px 10px;
+    border: 1px dashed var(--borde-input);
+    border-radius: 6px;
+    background-color: #F8FAFC;
+    font-size: 0.85rem;
+}
+
+.campo-con-boton {
+    display: flex;
+    gap: 8px;
+}
+
+.campo-con-boton input {
+    flex: 1;
+}
+
+.ayuda {
+    font-size: 0.8rem;
+    color: var(--texto-secundario);
+    display: block;
+}
+
+#bloque-alumno {
+    background-color: #F8FAFC;
+    border: 1px solid var(--borde-suave);
+    border-left: 4px solid var(--tecnm-azul-claro);
+    border-radius: 6px;
+    padding: 18px;
+    margin: 16px 0;
+}
+
+.subtitulo-bloque {
+    font-size: 1rem;
+    color: var(--tecnm-azul);
+    font-weight: 600;
+    margin-bottom: 14px;
+}
+
+/* --------------------------------------------------------------------------
+   Botones
+   -------------------------------------------------------------------------- */
+.btn-agregar {
+    background-color: var(--tecnm-azul);
+    color: #FFFFFF;
+    border: none;
+    padding: 11px 22px;
+    border-radius: 6px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 8px;
+    transition: background-color 0.2s;
+}
+
+.btn-agregar:hover:not(:disabled) {
+    background-color: var(--tecnm-azul-oscuro);
+}
+
+.btn-agregar:disabled {
+    opacity: 0.65;
+    cursor: not-allowed;
+}
+
+.btn-secundario {
+    background-color: #F1F5F9;
+    color: var(--texto-principal);
+    border: 1px solid var(--borde-input);
+    padding: 8px 14px;
+    border-radius: 6px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.2s;
+}
+
+.btn-secundario:hover:not(:disabled) {
+    background-color: #E2E8F0;
+    border-color: #94A3B8;
+}
+
+.btn-secundario:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.btn-eliminar, .btn-activar {
+    padding: 6px 12px;
+    border-radius: 5px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    border: 1px solid transparent;
+    transition: all 0.2s;
+}
+
+.btn-eliminar {
+    background-color: #FEF2F2;
+    color: #DC2626;
+    border-color: #FECACA;
+}
+
+.btn-eliminar:hover {
+    background-color: #DC2626;
+    color: #FFFFFF;
+}
+
+.btn-activar {
+    background-color: #ECFDF5;
+    color: #059669;
+    border-color: #A7F3D0;
+}
+
+.btn-activar:hover {
+    background-color: #059669;
+    color: #FFFFFF;
+}
+
+/* --------------------------------------------------------------------------
+   Mensajes de Estado (.msg, .ok, .error)
+   -------------------------------------------------------------------------- */
+.msg {
+    font-size: 0.9rem;
+    font-weight: 500;
+    margin: 10px 0;
+    border-radius: 6px;
+}
+
+.msg:empty {
+    display: none;
+}
+
+.msg.ok {
+    background-color: #ECFDF5;
+    color: #065F46;
+    border: 1px solid #A7F3D0;
+    padding: 12px 16px;
+}
+
+.msg.error {
+    background-color: #FEF2F2;
+    color: #991B1B;
+    border: 1px solid #FECACA;
+    padding: 12px 16px;
+}
+
+/* --------------------------------------------------------------------------
+   Filtros y tabla de usuarios
+   -------------------------------------------------------------------------- */
+.filtros {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+}
+
+.filtros input[type="search"] {
+    flex: 1;
+    min-width: 240px;
+    padding: 9px 14px;
+    border: 1px solid var(--borde-input);
+    border-radius: 6px;
+    font-size: 0.9rem;
+}
+
+.filtros select {
+    min-width: 200px;
+    padding: 9px 12px;
+    border: 1px solid var(--borde-input);
+    border-radius: 6px;
+    font-size: 0.9rem;
+    background-color: #FFFFFF;
+}
+
+.filtros input:focus, .filtros select:focus {
+    outline: none;
+    border-color: var(--tecnm-azul);
+}
+
+.tabla-usuarios {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+}
+
+.tabla-usuarios th {
+    background-color: #F1F5F9;
+    color: var(--tecnm-azul);
+    font-weight: 600;
+    text-align: left;
+    padding: 12px 14px;
+    border-bottom: 2px solid var(--borde-suave);
+    white-space: nowrap;
+}
+
+.tabla-usuarios td {
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--borde-suave);
+    vertical-align: middle;
+}
+
+.tabla-usuarios tbody tr:hover {
+    background-color: #F8FAFC;
+}
+
+.texto-vacio {
+    text-align: center;
+    color: var(--texto-secundario);
+    font-style: italic;
+    padding: 24px !important;
+}
+
+/* --------------------------------------------------------------------------
+   Badges de rol y estado
+   -------------------------------------------------------------------------- */
+.badge-rol {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.rol-alumno {
+    background-color: #EFF6FF;
+    color: #1D4ED8;
+}
+
+.rol-jefe {
+    background-color: #F3E8FF;
+    color: #7E22CE;
+}
+
+.rol-vinculacion {
+    background-color: #FEF3C7;
+    color: #B45309;
+}
+
+.rol-admin {
+    background-color: #E0E7FF;
+    color: #1B396A;
+    border: 1px solid #C7D2FE;
+}
+
+.estado-activo {
+    background-color: #DCFCE7;
+    color: #15803D;
+}
+
+.estado-inactivo {
+    background-color: #F1F5F9;
+    color: #475569;
+}
+
+
+.paginador {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 18px;
+    padding-top: 14px;
+    border-top: 1px solid var(--borde-suave);
+    font-size: 0.875rem;
+    color: var(--texto-secundario);
+}
+
+/* --------------------------------------------------------------------------
+   Responsividad
+   -------------------------------------------------------------------------- */
+@media (max-width: 768px) {
+    .topbar {
+        height: auto;
+        padding: 12px 16px;
+        flex-direction: column;
+        gap: 10px;
+        align-items: flex-start;
+    }
+
+    .topbar-right {
+        width: 100%;
+        justify-content: space-between;
+    }
+
+    .layout {
+        flex-direction: column;
+    }
+
+    .sidebar {
+        width: 100%;
+        border-right: none;
+        border-bottom: 1px solid var(--borde-suave);
+        padding: 12px;
+    }
+
+    .menu {
+        flex-direction: row;
+        overflow-x: auto;
+    }
+
+    .menu-item {
+        white-space: nowrap;
+    }
+
+    .main-content {
+        padding: 20px 16px;
+    }
+
+    .paginador {
+        flex-direction: column;
+        gap: 10px;
+    }
+}
+
+/* El atributo hidden debe ganarle a .form-grid (que usa display: grid). */
+[hidden] { display: none !important; }
+
+/* Correo del alumno: se genera solo con el número de control. */
+.form-group input[readonly] {
+    background-color: #f1f3f5;
+    color: #555;
+    cursor: not-allowed;
+}

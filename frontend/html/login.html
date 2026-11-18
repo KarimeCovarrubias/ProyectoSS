@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Iniciar sesión</title>
+    <link rel="stylesheet" href="../css/estilo_iniciarSesion.css">
+</head>
+<body>
+    <div class="login">
+        <img class="logoTec" src="../html/img/TecCul.png">
+        <h2>Acceso al Sistema</h2>
+        <div class="info">
+            Ingrese su número de control (alumno) o número de empleado para acceder. <br>
+            Los alumnos usan su <strong>CURP</strong> como contraseña. <br>
+            Si realizó su registro previo en Google Forms,
+            sus datos ya se encuentran en la base de datos del sistema.
+        </div>
+        <form id="form-login" onsubmit="handleLogin(event)">
+            <div class="form-group">
+                <label for="login-user">Usuario (Número de Control / Empleado)</label>
+                <input type="text" id="login-user" placeholder="Ej. 23170270, ADMIN001, VINC001, SS001">
+            </div>
+            <div class="form-group">
+                <label for="login-pass">Contraseña</label>
+                <input type="password" id="login-pass" placeholder="Contraseña de acceso">
+            </div>
+            <p id="login-msg" role="alert" style="color:#b91c1c;font-size:.9rem;min-height:1.2em"></p>
+            <button class="ingresar" type="submit">Ingresar</button>
+        </form>
+        <p class="olvidada">¿Olvidaste tu contraseña? <a href="../html/recuperar.html">Recupérala</a></p>
+    </div>
+    <script src="../js/login.js"></script>
+</body>
+</html>

@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de Usuarios - Panel de Administración</title>
+    <link rel="stylesheet" href="../../css/admin/estilo_usuarios.css">
+</head>
+<body>
+
+    <header class="topbar">
+        <div class="topbar-left">
+            <img src="../img/TecCul.png" alt="Logo TecNM" class="logo-header">
+            <span class="titulo-sistema">Sistema de Servicio Social - Panel Admin</span>
+        </div>
+        <div class="topbar-right">
+            <span class="rol-header"><span id="admin-nombre"></span>ADMINISTRADOR DEL SISTEMA</span>
+            <a href="../login.html" id="btn-salir" class="btn-salir">Salir</a>
+        </div>
+    </header>
+
+    <div class="layout">
+        <aside class="sidebar">
+            <nav class="menu">
+                <a href="inicio.html" class="menu-item">Inicio</a>
+                <a href="usuarios.html" class="menu-item active">Gestión de Usuarios</a>
+                <a href="datos_p.html" class="menu-item">Datos Personales</a>
+            </nav>
+        </aside>
+
+        <main class="main-content">
+            <h1 class="page-title">Gestión de Usuarios y Asignación de Roles</h1>
+
+            <!-- 1. Importar alumnos desde el Excel de Forms -->
+            <section class="card-panel">
+                <h2 class="section-subtitle">Importar alumnos (Excel del Forms)</h2>
+                <p class="ayuda">Descargue el Excel de respuestas del Forms del curso de inducción y súbalo aquí.
+                   Se crea una cuenta por alumno (usuario = número de control, correo = número de control@culiacan.tecnm.mx)
+                   y su <strong>contraseña inicial es la CURP</strong> que capturó en el Forms.
+                   Puede descargar la lista de credenciales <strong>una sola vez</strong>.</p>
+                <form id="form-importar">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="imp-periodo">Periodo del curso</label>
+                            <input type="text" id="imp-periodo" required placeholder="Ej. 2026-2" maxlength="6">
+                        </div>
+                        <div class="form-group">
+                            <label for="imp-fecha">Fecha en que se impartió</label>
+                            <input type="date" id="imp-fecha" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="imp-archivo">Archivo Excel (.xlsx, máx. 5 MB)</label>
+                            <input type="file" id="imp-archivo" accept=".xlsx" required>
+                        </div>
+                    </div>
+                    <p class="msg" id="mensaje-importar" role="status"></p>
+                    <div id="resultado-importar"></div>
+                    <button type="submit" class="btn-agregar" id="btn-importar">Importar alumnos</button>
+                    <button type="button" class="btn-secundario" id="btn-descargar-cred" hidden>Descargar credenciales (CSV)</button>
+                </form>
+            </section>
+
+            <!-- 2. Registrar usuarios: personal y alumnos (casos especiales) -->
+            <section class="card-panel">
+                <h2 class="section-subtitle">+ Registrar Usuario (Personal o Alumno)</h2>
+                <p class="ayuda">Los alumnos normalmente se registran importando el Excel del Forms.
+                   Use este formulario para un alumno solo en <strong>casos especiales</strong>
+                   (por ejemplo, si no aparece en el Forms): capture su número de control, CURP,
+                   carrera y semestre. Entrará con su número de control y su <strong>CURP</strong>
+                   como contraseña. Después podrá completar su plan y créditos en "Datos académicos".</p>
+                <form id="form-nuevo-usuario">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="nombre">Nombre(s)</label>
+                            <input type="text" id="nombre" required placeholder="Ej. Juan Carlos">
+                        </div>
+                        <div class="form-group">
+                            <label for="apellido-paterno">Apellido paterno</label>
+                            <input type="text" id="apellido-paterno" required placeholder="Ej. Pérez">
+                        </div>
+                        <div class="form-group">
+                            <label for="apellido-materno">Apellido materno</label>
+                            <input type="text" id="apellido-materno" required placeholder="Ej. López">
+                        </div>
+                    </div>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="usuario-id" id="label-usuario-id">Número de empleado</label>
+                            <input type="text" id="usuario-id" required placeholder="Ej. EMP002">
+                        </div>
+                        <div class="form-group">
+                            <label for="rol">Rol del Sistema</label>
+                            <select id="rol" required>
+                                <option value="JEFE_OFICINA_SS">Jefe(a) de Oficina de Servicio Social</option>
+                                <option value="JEFE_VINCULACION">Jefe(a) de Vinculación</option>
+                                <option value="ADMINISTRADOR">Administrador</option>
+                                <option value="ALUMNO">Alumno</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="correo">Correo Institucional</label>
+                            <input type="email" id="correo" required placeholder="usuario@culiacan.tecnm.mx">
+                            <small class="ayuda" id="ayuda-correo" hidden>
+                                Para alumnos se genera solo: número de control @culiacan.tecnm.mx
+                            </small>
+                        </div>
+                    </div>
+
+                    <!-- Campos exclusivos del alumno (se muestran al elegir el rol Alumno) -->
+                    <div class="form-grid" id="bloque-alumno" hidden>
+                        <div class="form-group">
+                            <label for="alumno-curp">CURP</label>
+                            <input type="text" id="alumno-curp" maxlength="18"
+                                   placeholder="18 caracteres" autocomplete="off">
+                        </div>
+                        <div class="form-group">
+                            <label for="alumno-carrera">Carrera</label>
+                            <input type="text" id="alumno-carrera" maxlength="120"
+                                   placeholder="Ej. Ing. en Sistemas Computacionales">
+                        </div>
+                        <div class="form-group">
+                            <label for="alumno-semestre">Semestre</label>
+                            <input type="number" id="alumno-semestre" min="7" max="13"
+                                   placeholder="Ej. 7">
+                        </div>
+                    </div>
+                    <div class="form-grid" id="bloque-alumno-2" hidden>
+                        <div class="form-group">
+                            <label for="alumno-telefono">Teléfono (opcional)</label>
+                            <input type="text" id="alumno-telefono" inputmode="numeric"
+                                   maxlength="10" placeholder="10 dígitos">
+                        </div>
+                        <div class="form-group">
+                            <label for="alumno-domicilio">Domicilio (opcional)</label>
+                            <input type="text" id="alumno-domicilio" maxlength="150"
+                                   placeholder="Calle, número, colonia">
+                        </div>
+                    </div>
+
+                    <div class="form-grid" id="bloque-password">
+                        <div class="form-group">
+                            <label for="password">Contraseña Inicial</label>
+                            <div class="campo-con-boton">
+                                <input type="text" id="password" required autocomplete="off"
+                                       placeholder="10+ caracteres, 1 mayúscula y 1 número">
+                                <button type="button" class="btn-secundario" id="btn-generar">Generar</button>
+                            </div>
+                            <small class="ayuda">Solo sirve para el primer ingreso: el usuario deberá cambiarla.</small>
+                        </div>
+                    </div>
+                    <p class="msg" id="mensaje-form" role="status"></p>
+                    <button type="submit" class="btn-agregar" id="btn-guardar">Guardar y Registrar Usuario</button>
+                </form>
+            </section>
+
+            <!-- 3. Datos académicos de un alumno (aparece al pulsar "Datos académicos") -->
+            <section class="card-panel" id="panel-academicos" hidden>
+                <h2 class="section-subtitle">Datos académicos de <span id="acad-nombre"></span></h2>
+                <p class="ayuda">El alumno no podrá elegir programa hasta que se capturen su plan y sus créditos.</p>
+                <form id="form-academicos">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="acad-plan">Plan de Servicio Social</label>
+                            <select id="acad-plan" required>
+                                <option value="">Seleccione…</option>
+                                <option value="NUEVO">Plan nuevo</option>
+                                <option value="ANTIGUO">Plan antiguo</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="acad-creditos">Total de créditos acumulados</label>
+                            <input type="number" id="acad-creditos" min="0" step="1" required>
+                        </div>
+                    </div>
+                    <div class="form-grid" id="acad-antiguo" hidden>
+                        <div class="form-group">
+                            <label for="acad-foto">Fotografía infantil (JPG o PNG, máx. 5 MB)</label>
+                            <input type="file" id="acad-foto" accept=".jpg,.jpeg,.png">
+                        </div>
+                        <div class="form-group">
+                            <label for="acad-boleta">Boleta de actividades extraescolares (PDF, JPG o PNG)</label>
+                            <input type="file" id="acad-boleta" accept=".pdf,.jpg,.jpeg,.png">
+                        </div>
+                    </div>
+                    <p class="msg" id="mensaje-acad" role="status"></p>
+                    <button type="submit" class="btn-agregar" id="btn-guardar-acad">Guardar datos académicos</button>
+                    <button type="button" class="btn-secundario" id="btn-cancelar-acad">Cancelar</button>
+                </form>
+            </section>
+
+            <!-- 4. Listado -->
+            <section class="card-panel">
+                <h2 class="section-subtitle">Usuarios en el Sistema</h2>
+                <div class="filtros">
+                    <input type="search" id="filtro-q" placeholder="Buscar por nombre, usuario o correo">
+                    <select id="filtro-rol">
+                        <option value="">Todos los roles</option>
+                        <option value="ALUMNO">Alumnos</option>
+                        <option value="JEFE_OFICINA_SS">Jefe(a) de Oficina de SS</option>
+                        <option value="JEFE_VINCULACION">Jefe(a) de Vinculación</option>
+                        <option value="ADMINISTRADOR">Administradores</option>
+                    </select>
+                </div>
+                <p class="msg" id="mensaje-lista" role="status"></p>
+
+                <div style="overflow-x: auto;">
+                    <table class="tabla-usuarios">
+                        <thead>
+                            <tr>
+                                <th>Nombre(s)</th>
+                                <th>Apellido paterno</th>
+                                <th>Apellido materno</th>
+                                <th>Usuario / Control</th>
+                                <th>Correo</th>
+                                <th>Rol</th>
+                                <th>Estado</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabla-usuarios-body"></tbody>
+                    </table>
+                </div>
+
+                <div class="paginador">
+                    <button type="button" class="btn-secundario" id="btn-anterior">← Anterior</button>
+                    <span id="info-pagina"></span>
+                    <button type="button" class="btn-secundario" id="btn-siguiente">Siguiente →</button>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="../../js/sesion.js"></script>
+    <script src="../../js/admin/usuarios.js"></script>
+</body>
+</html>

@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cartas de Terminación - Jefe de Vinculación</title>
+    <link rel="stylesheet" href="../../css/jefeVinc/estilo_cartas.css">
+</head>
+<body>
+
+    <!-- Barra Superior -->
+    <header class="topbar">
+        <div class="topbar-left">
+            <img src="../img/TecCul.png" alt="Logo TecNM" class="logo-header">
+            <span class="titulo-sistema">Sistema de Servicio Social - Vinculación</span>
+        </div>
+        <div class="topbar-right">
+            <span class="rol-header"><span id="usuario-nombre"></span>JEFE(A) DE VINCULACIÓN</span>
+            <a href="../login.html" id="btn-salir" class="btn-salir">Salir</a>
+        </div>
+    </header>
+
+    <div class="layout">
+
+        <!-- Menú Lateral -->
+        <aside class="sidebar">
+            <nav class="menu">
+                <a href="inicio.html" class="menu-item">Inicio</a>
+                <a href="cartas.html" class="menu-item active">Cartas de Terminación</a>
+                <a href="datos_p.html" class="menu-item">Datos Personales</a>
+            </nav>
+        </aside>
+
+        <main class="main-content">
+            <h1 class="page-title">Cartas de Terminación</h1>
+
+            <section class="card-panel">
+                <h2 class="section-subtitle">Alumnos con servicio social concluido</h2>
+                <p class="ayuda" style="margin-bottom: 15px;">
+                    Sube la carta de terminación <strong>firmada</strong> en PDF (máximo 5 MB).
+                    El alumno podrá descargarla desde su sesión. Si subes otra, reemplaza a la anterior.
+                </p>
+
+                <div class="filtros">
+                    <input type="search" id="filtro-q" placeholder="Buscar por nombre o número de control">
+                    <select id="filtro-estado">
+                        <option value="">Todos</option>
+                        <option value="pendientes">Pendientes de carta</option>
+                        <option value="subidas">Con carta subida</option>
+                    </select>
+                </div>
+                <p class="msg" id="mensaje-lista" role="status"></p>
+
+                <div style="overflow-x: auto;">
+                    <table class="tabla-usuarios">
+                        <thead>
+                            <tr>
+                                <th>Alumno</th>
+                                <th>No. de control</th>
+                                <th>Carrera</th>
+                                <th>Programa</th>
+                                <th>Fin del servicio</th>
+                                <th>Carta</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabla-cartas-body">
+                            <!-- Se llena dinámicamente con JS -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="paginador">
+                    <button type="button" class="btn-secundario" id="btn-anterior">← Anterior</button>
+                    <span id="info-pagina"></span>
+                    <button type="button" class="btn-secundario" id="btn-siguiente">Siguiente →</button>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="../../js/sesion.js"></script>
+    <script src="../../js/jefeVinc/cartas.js"></script>
+</body>
+</html>

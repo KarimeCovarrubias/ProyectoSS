@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Subir Documentos - Portal del Alumno</title>
+    <link rel="stylesheet" href="../../css/alumno/estilo_subir.css">
+</head>
+<body>
+
+    <!-- Barra Superior -->
+    <header class="topbar">
+        <div class="topbar-left">
+            <img src="../img/TecCul.png" alt="Logo TecNM" class="logo-header">
+            <span class="titulo-sistema">Sistema de Servicio Social</span>
+        </div>
+        <div class="topbar-right">
+            <span class="carrera-header" id="carrera-header">ING. EN SISTEMAS COMPUTACIONALES</span>
+            <a href="../login.html" id="btn-salir" class="btn-salir">Salir</a>
+        </div>
+    </header>
+
+    <!-- Contenedor Principal -->
+    <div class="layout">
+        
+        <!-- Menú Lateral -->
+        <aside class="sidebar">
+            <nav class="menu">
+                <a href="inicio.html" class="menu-item">Inicio</a>
+                <a href="carga.html" class="menu-item">Carga</a>
+                <a href="bp.html" class="menu-item">BP</a>
+                <a href="pp.html" class="menu-item">PP</a>
+                <a href="datos_p.html" class="menu-item">Datos P</a>
+                <a href="subir.html" class="menu-item active">Subir</a>
+            </nav>
+        </aside>
+
+        <!-- Área Principal -->
+        <main class="main-content">
+            <h1 class="page-title">Subir Documentos y Reportes</h1>
+
+            <div class="alerta-info">
+                Sube tus documentos obligatorios y reportes bimestrales en formato <strong>PDF</strong> (máximo 5 MB por archivo). El personal de la oficina los revisará y validará.
+                <br>
+                Cada documento tiene un <strong>periodo de entrega</strong> definido por la Oficina de Servicio Social: solo puedes subirlo dentro de esas fechas. Las plantillas en Word se pueden descargar en cualquier momento para llenarlas.
+            </div>
+
+            <section class="card-documentos">
+                <h2 class="section-subtitle">Expediente de Documentos Requeridos</h2>
+                <div style="overflow-x: auto;">
+                    <table class="tabla-docs">
+                        <thead>
+                            <tr>
+                                <th>Tipo de Documento</th>
+                                <th>Estatus Actual</th>
+                                <th>Observaciones</th>
+                                <th>Seleccionar Archivo (PDF)</th>
+                                <th>Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabla-docs-body">
+                            <tr>
+                                <td colspan="5" style="text-align: center; color: #666;">Cargando lista de documentos...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </main>
+    </div>
+    <script src="../../js/sesion.js"></script>
+    <script src="../../js/alumno/subir.js"></script>
+</body>
+</html>

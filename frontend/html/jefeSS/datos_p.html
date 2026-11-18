@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Datos Personales - Jefe(a) de Oficina de SS</title>
+    <link rel="stylesheet" href="../../css/alumno/estilo_datosP.css">
+</head>
+<body>
+
+    <!-- Barra Superior -->
+    <header class="topbar">
+        <div class="topbar-left">
+            <img src="../img/TecCul.png" alt="Logo TecNM" class="logo-header">
+            <span class="titulo-sistema">Sistema de Servicio Social</span>
+        </div>
+        <div class="topbar-right">
+            <span class="carrera-header" id="rol-header">JEFE(A) DE OFICINA DE SS</span>
+            <a href="../login.html" id="btn-salir" class="btn-salir">Salir</a>
+        </div>
+    </header>
+
+    <!-- Contenedor Principal -->
+    <div class="layout">
+        
+        <!-- Menú Lateral -->
+        <aside class="sidebar">
+            <nav class="menu">
+                <a href="inicio.html" class="menu-item">Inicio</a>
+                <a href="banco.html" class="menu-item">Banco de Propuestas</a>
+                <a href="propuestas.html" class="menu-item">Propuestas Propias</a>
+                <a href="documentos.html" class="menu-item">Revisar Documentos</a>
+                <a href="plantillas.html" class="menu-item">Plantillas Word</a>
+                <a href="datos_p.html" class="menu-item active">Datos Personales</a>
+            </nav>
+        </aside>
+
+        <!-- Área Principal -->
+        <main class="main-content">
+            <h1 class="page-title">Datos Personales y de Contacto</h1>
+
+            <div class="alerta-info">
+                Actualiza tu información de contacto. Los campos institucionales (nombre, apellidos, correo y rol) no se pueden modificar por seguridad.
+            </div>
+
+            <section class="card-datos">
+                <h2 class="section-subtitle">Información del Usuario</h2>
+                <form id="form-datos">
+                    <div class="form-group">
+                        <label>Nombre(s)</label>
+                        <input type="text" id="nombre" disabled>
+                    </div>
+                    <div class="form-group">
+                        <label>Apellido paterno</label>
+                        <input type="text" id="apellido-paterno" disabled>
+                    </div>
+                    <div class="form-group">
+                        <label>Apellido materno</label>
+                        <input type="text" id="apellido-materno" disabled>
+                    </div>
+                    <div class="form-group">
+                        <label>Correo Institucional</label>
+                        <input type="email" id="correo" disabled>
+                    </div>
+                    <div class="form-group">
+                        <label>Rol en el Sistema</label>
+                        <input type="text" id="rol" disabled>
+                    </div>
+                    <div class="form-group">
+                        <label for="telefono">Teléfono de Contacto (10 dígitos)</label>
+                        <input type="text" id="telefono" maxlength="10" placeholder="Ej. 6671234567">
+                    </div>
+                    <div class="form-group">
+                        <label for="domicilio">Domicilio</label>
+                        <input type="text" id="domicilio" required placeholder="Ej. Col. Centro, Culiacán, Sin.">
+                    </div>
+                    <p id="mensaje-datos" role="status"></p>
+                    <button type="submit" class="btn-guardar">Guardar Cambios</button>
+                </form>
+            </section>
+        </main>
+    </div>
+    <script src="../../js/sesion.js"></script>
+    <script src="../../js/jefeSS/datos_p.js"></script>
+</body>
+</html>

@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inicio - Portal del Alumno</title>
+    <link rel="stylesheet" href="../../css/alumno/estilo_inicio.css">
+</head>
+<body>
+    <header class="topbar">
+        <div class="topbar-left">
+            <img src="../img/TecCul.png" alt="Logo TecNM" class="logo-header">
+            <span class="titulo-sistema">Sistema de Servicio Social</span>
+        </div>
+        <div class="topbar-right">
+            <span class="carrera-header" id="carrera-header">CARGANDO CARRERA...</span>
+            <a href="../login.html" id="btn-salir" class="btn-salir">Salir</a>
+        </div>
+    </header>
+
+    <div class="layout">
+        <aside class="sidebar">
+            <nav class="menu">
+                <a href="inicio.html" class="menu-item active">Inicio</a>
+                <a href="carga.html" class="menu-item">Carga</a>
+                <a href="bp.html" class="menu-item">BP</a>
+                <a href="pp.html" class="menu-item">PP</a>
+                <a href="datos_p.html" class="menu-item">Datos P</a>
+                <a href="subir.html" class="menu-item">Subir</a>
+            </nav>
+        </aside>
+
+        <main class="main-content">
+            <h1 class="page-title">Inicio</h1>
+            <section class="card-alumno">
+                <div class="info-izquierda">
+                    <div class="foto-contenedor">
+                        <img src="../img/avatar-default.png" alt="Foto del alumno" class="foto-alumno" id="alumno-foto">
+                    </div>
+
+                    <div class="datos-basicos">
+                        <div class="dato-grupo">
+                            <span class="etiqueta">Nombre</span>
+                            <p class="valor" id="alumno-nombre">Cargando...</p>
+                        </div>
+
+                        <div class="fila-doble">
+                            <div class="dato-grupo">
+                                <span class="etiqueta">No. Control</span>
+                                <p class="valor" id="alumno-control">--------</p>
+                            </div>
+                            <div class="dato-grupo">
+                                <span class="etiqueta">Semestre</span>
+                                <p class="valor" id="alumno-semestre">-</p>
+                            </div>
+                        </div>
+
+                        <div class="dato-grupo">
+                            <span class="etiqueta">Estatus de Servicio</span>
+                            <span class="badge-vigente" id="alumno-estatus">PENDIENTE</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="info-derecha">
+                    <div class="programa-box">
+                        <span class="etiqueta">Programa Seleccionado</span>
+                        <h3 class="programa-nombre" id="programa-titulo">
+                            Sin programa asignado
+                        </h3>
+                        <p class="programa-dependencia" id="programa-dep">
+                            Selecciona una propuesta en la sección Carga o Propuesta Propia.
+                        </p>
+                        <div class="programa-estado" id="programa-estado">
+                            <span>Créditos acumulados: <strong id="alumno-creditos">-</strong></span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+    <script src="../../js/sesion.js"></script>
+    <script src="../../js/alumno/inicio.js"></script>
+</body>
+</html>

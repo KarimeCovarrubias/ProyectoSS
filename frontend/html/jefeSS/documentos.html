@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Revisar Documentos | Servicio Social</title>
+    <link rel="stylesheet" href="../../css/jefeSS/estilo_jefe.css">
+</head>
+<body>
+    <header class="topbar">
+        <div class="topbar-left">
+            <img src="../img/TecCul.png" alt="Logo TecNM" class="logo-header">
+            <span class="titulo-sistema">Sistema de Servicio Social</span>
+            <span class="carrera-header">JEFE DE OFICINA DE SERVICIO SOCIAL</span>
+        </div>
+        <div class="topbar-right">
+            <a href="#" id="btn-salir" class="btn-salir">Salir</a>
+        </div>
+    </header>
+    <div class="layout">
+        <aside class="sidebar">
+            <nav class="menu">
+                <a href="inicio.html" class="menu-item">Inicio</a>
+                <a href="banco.html" class="menu-item">Banco de Propuestas</a>
+                <a href="propuestas.html" class="menu-item">Propuestas Propias</a>
+                <a href="documentos.html" class="menu-item active">Revisar Documentos</a>
+                <a href="plantillas.html" class="menu-item">Plantillas Word</a>
+                <a href="datos_p.html" class="menu-item">Datos Personales</a>
+            </nav>
+        </aside>
+        <main class="main-content">
+            <h1 class="page-title">Revisar documentos</h1>
+            <div class="alerta-info">Revisa el PDF que subió el alumno. Si lo validas le aparece como validado; si lo observas, 
+                le aparecen tus comentarios y puede subir otra versión.
+            </div>
+            <div id="mensaje" class="mensaje"></div>
+
+            <div class="filtros">
+                <label for="filtro-estatus">Mostrar:</label>
+                <select id="filtro-estatus">
+                    <option value="PENDIENTE">Pendientes de revisar</option>
+                    <option value="OBSERVADO">Observados</option>
+                    <option value="VALIDADO">Validados</option>
+                    <option value="TODOS">Todos</option>
+                </select>
+            </div>
+            <section class="card-jefe">
+                <div class="tabla-scroll">
+                <table class="tabla-jefe">
+                    <thead>
+                        <tr>
+                            <th>Alumno</th>
+                            <th>Documento</th>
+                            <th>Versión</th>
+                            <th>Subido</th>
+                            <th>Estatus</th>
+                            <th>Observaciones</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabla-docs-body">
+                        <tr>
+                            <td colspan="7">Cargando…</td>
+                        </tr>
+                    </tbody>
+                </table>
+                </div>
+            </section>
+        </main>
+    </div>
+    <script src="../../js/sesion.js"></script>
+    <script src="../../js/jefeSS/jefe_comun.js"></script>
+    <script src="../../js/jefeSS/jefe_documentos.js"></script>
+</body>
+</html>

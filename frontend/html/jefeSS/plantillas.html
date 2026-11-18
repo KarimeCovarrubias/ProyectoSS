@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Plantillas en Word | Servicio Social</title>
+    <link rel="stylesheet" href="../../css/jefeSS/estilo_jefe.css">
+</head>
+<body>
+    <header class="topbar">
+        <div class="topbar-left">
+            <img src="../img/TecCul.png" alt="Logo TecNM" class="logo-header">
+            <span class="titulo-sistema">Sistema de Servicio Social</span>
+            <span class="carrera-header">JEFE DE OFICINA DE SERVICIO SOCIAL</span>
+        </div>
+        <div class="topbar-right">
+            <a href="#" id="btn-salir" class="btn-salir">Salir</a>
+        </div>
+    </header>
+    <div class="layout">
+        <aside class="sidebar">
+            <nav class="menu">
+                <a href="inicio.html" class="menu-item">Inicio</a>
+                <a href="banco.html" class="menu-item">Banco de Propuestas</a>
+                <a href="propuestas.html" class="menu-item">Propuestas Propias</a>
+                <a href="documentos.html" class="menu-item">Revisar Documentos</a>
+                <a href="plantillas.html" class="menu-item active">Plantillas Word</a>
+                <a href="datos_p.html" class="menu-item">Datos Personales</a>
+            </nav>
+        </aside>
+        <main class="main-content">
+            <h1 class="page-title">Plantillas en Word</h1>
+            <div class="alerta-info">Sube aquí el formato en Word (.docx) de cada documento.
+                El alumno lo descarga desde "Subir documentos", lo llena y lo regresa en PDF.
+                Al subir otro archivo para el mismo documento, reemplaza al anterior.
+                <br>
+                En la columna <strong>Fechas de entrega</strong> defines desde y hasta cuándo
+                <strong>todos los alumnos</strong> pueden subir cada documento (la misma fecha para todos).
+                Las plantillas se pueden descargar en cualquier momento: no dependen de la fecha.</div>
+            <div id="mensaje" class="mensaje"></div>
+
+            <section class="card-jefe">
+                <h2 class="section-subtitle">Programar una semana para todos</h2>
+                <p class="texto-vacio">Aplica la misma semana (7 días) a los documentos que aún no tienen fecha.</p>
+                <div class="filtros">
+                    <label for="periodo-semana-inicio">Semana desde:</label>
+                    <input type="date" id="periodo-semana-inicio">
+                    <button type="button" id="btn-semana" class="btn-guardar">
+                        Aplicar a los documentos sin fecha
+                    </button>
+                </div>
+            </section>
+
+            <section class="card-jefe">
+                <div class="tabla-scroll">
+                <table class="tabla-jefe">
+                    <thead>
+                        <tr>
+                            <th>Documento</th><th>Plantilla actual</th>
+                            <th>Fechas de entrega (todos los alumnos)</th>
+                            <th>Nuevo archivo (.docx)</th>
+                            <th>Acción</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabla-plantillas-body">
+                        <tr>
+                            <td colspan="5">Cargando…</td>
+                        </tr>
+                    </tbody>
+                </table>
+                </div>
+            </section>
+        </main>
+    </div>
+    <script src="../../js/sesion.js"></script>
+    <script src="../../js/jefeSS/jefe_comun.js"></script>
+    <script src="../../js/jefeSS/jefe_plantillas.js"></script>
+</body>
+</html>

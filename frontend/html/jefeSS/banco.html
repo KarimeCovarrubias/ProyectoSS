@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Banco de Propuestas | Servicio Social</title>
+    <link rel="stylesheet" href="../../css/jefeSS/estilo_jefe.css">
+</head>
+<body>
+    <header class="topbar">
+        <div class="topbar-left">
+            <img src="../img/TecCul.png" alt="Logo TecNM" class="logo-header">
+            <span class="titulo-sistema">Sistema de Servicio Social</span>
+            <span class="carrera-header">JEFE DE OFICINA DE SERVICIO SOCIAL</span>
+        </div>
+        <div class="topbar-right">
+            <a href="#" id="btn-salir" class="btn-salir">Salir</a>
+        </div>
+    </header>
+    <div class="layout">
+        <aside class="sidebar">
+            <nav class="menu">
+                <a href="inicio.html" class="menu-item">Inicio</a>
+                <a href="banco.html" class="menu-item active">Banco de Propuestas</a>
+                <a href="propuestas.html" class="menu-item">Propuestas Propias</a>
+                <a href="documentos.html" class="menu-item">Revisar Documentos</a>
+                <a href="plantillas.html" class="menu-item">Plantillas Word</a>
+                <a href="datos_p.html" class="menu-item">Datos Personales</a>
+            </nav>
+        </aside>
+        <main class="main-content">
+            <h1 class="page-title">Banco de propuestas</h1>
+            <div class="alerta-info">Lo que agregues aquí aparece de inmediato en el banco del 
+                alumno y puede elegirlo mientras haya lugares disponibles. 
+                Las propuestas propias aprobadas también se listan aquí.
+            </div>
+            <div id="mensaje" class="mensaje"></div>
+            <section class="card-jefe">
+                <h2 class="section-subtitle">Agregar propuesta al banco</h2>
+                <form id="form-programa">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="p-nombre">Nombre del programa</label>
+                            <input type="text" id="p-nombre" required >
+                        </div>
+                        <div class="form-group">
+                            <label for="p-empresa">Dependencia / empresa receptora</label>
+                            <input type="text" id="p-empresa" required >
+                        </div>
+                        <div class="form-group">
+                            <label for="p-titular-nombre">Nombre(s) del responsable</label>
+                            <input type="text" id="p-titular-nombre" required >
+                        </div>
+                        <div class="form-group">
+                            <label for="p-titular-paterno">Apellido paterno del responsable</label>
+                            <input type="text" id="p-titular-paterno" required >
+                        </div>
+                        <div class="form-group">
+                            <label for="p-titular-materno">Apellido materno del responsable</label>
+                            <input type="text" id="p-titular-materno" required >
+                        </div>
+                        <div class="form-group">
+                            <label for="p-telefono">Teléfono de la dependencia</label>
+                            <input type="text" id="p-telefono" required >
+                        </div>
+                        <div class="form-group completo">
+                            <label for="p-domicilio">Domicilio de la dependencia</label>
+                            <input type="text" id="p-domicilio" required >
+                        </div>
+                        <div class="form-group">
+                            <label for="p-area">Área responsable</label>
+                            <input type="text" id="p-area" >
+                        </div>
+                        <div class="form-group">
+                            <label for="p-periodo">Periodo (ej. 2026-2)</label>
+                            <input type="text" id="p-periodo" required >
+                        </div>
+                        <div class="form-group completo">
+                            <label for="p-objetivo">Objetivo</label><textarea id="p-objetivo"></textarea>
+                        </div>
+                        <div class="form-group completo">
+                            <label for="p-actividades">Actividades</label>
+                            <textarea id="p-actividades" required></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label for="p-horas">Horas</label>
+                            <input type="number" id="p-horas" required min="1" value="480">
+                        </div>
+                        <div class="form-group">
+                            <label for="p-cupo">Lugares disponibles</label>
+                            <input type="number" id="p-cupo" required min="1">
+                        </div>
+                        <div class="form-group">
+                            <label for="p-plan">Válida para el plan</label>
+                            <select id="p-plan">
+                                <option value="AMBOS">Ambos planes</option>
+                                <option value="NUEVO">Plan nuevo</option>
+                                <option value="ANTIGUO">Plan antiguo</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="p-origen">Modalidad</label>
+                            <select id="p-origen">
+                                <option value="INTERNA">Interno (en la escuela)</option>
+                                <option value="EXTERNA">Externo (fuera de la escuela: pide carta de presentación)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button type="submit" id="btn-agregar" class="btn-guardar">Agregar al banco</button>
+                </form>
+            </section>
+            <section class="card-jefe">
+                <h2 class="section-subtitle">Propuestas en el banco</h2>
+                <div class="tabla-scroll">
+                <table class="tabla-jefe">
+                    <thead>
+                        <tr>
+                            <th>Propuesta</th>
+                            <th>Dependencia</th>
+                            <th>Periodo</th>
+                            <th>Lugares</th>
+                            <th>Plan / modalidad</th>
+                            <th>Origen</th>
+                            <th>Estatus</th>
+                            <th>Acción</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabla-programas-body">
+                        <tr>
+                            <td colspan="8">Cargando…</td>
+                        </tr>
+                    </tbody>
+                </table>
+                </div>
+            </section>
+        </main>
+    </div>
+    <script src="../../js/sesion.js"></script>
+    <script src="../../js/jefeSS/jefe_comun.js"></script>
+    <script src="../../js/jefeSS/jefe_banco.js"></script>
+</body>
+</html>

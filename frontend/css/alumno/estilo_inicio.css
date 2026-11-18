@@ -1,0 +1,260 @@
+:root {
+    --tec-blue: #1b365d;
+    --tec-blue-hover: #032a61;
+    --tec-purple: #512a80;
+    --tec-dark: #222222;
+    --tec-light: #f4f6f9;
+    --tec-border: #dcdcdc;
+    --tec-white: #ffffff;
+    --tec-gray-active: #e2e6ec;
+    --btn-salir: #DC2626;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: Arial, sans-serif;
+}
+
+body {
+    background-color: var(--tec-light);
+    color: var(--tec-dark);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+/* --- Barra Superior --- */
+.topbar {
+    background-color: var(--tec-blue);
+    color: var(--tec-white);
+    height: 65px;
+    padding: 0 25px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+}
+
+.topbar-left, .topbar-right {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.logo-header {
+    height: 45px;
+    background-color: var(--tec-white);
+    border-radius: 4px;
+    padding: 2px;
+}
+
+.titulo-sistema {
+    font-size: 18px;
+    font-weight: bold;
+}
+
+.carrera-header {
+    font-size: 14px;
+    letter-spacing: 0.5px;
+    opacity: 0.9;
+}
+
+.btn-salir {
+    background-color: rgba(255, 255, 255, 0.14);
+    color: #FFFFFF;
+    text-decoration: none;
+    padding: 6px 14px;
+    border-radius: 6px;
+    font-weight: 600;
+    font-size: 0.85rem;
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    transition: background-color 0.2s, border-color 0.2s;
+}
+
+.btn-salir:hover {
+    background-color: var(--btn-salir);
+}
+
+.layout {
+    display: flex;
+    flex: 1;
+}
+
+/* --- Menú Lateral --- */
+.sidebar {
+    width: 220px;
+    background-color: var(--tec-white);
+    border-right: 1px solid var(--tec-border);
+    padding-top: 15px;
+}
+
+.menu {
+    display: flex;
+    flex-direction: column;
+}
+
+.menu-item {
+    text-decoration: none;
+    color: var(--tec-dark);
+    padding: 15px 25px;
+    font-size: 16px;
+    border-bottom: 1px solid #f0f0f0;
+    transition: background-color 0.2s, color 0.2s;
+}
+
+.menu-item:hover {
+    background-color: var(--tec-light);
+    color: var(--tec-blue);
+}
+
+.menu-item.active {
+    background-color: var(--tec-gray-active);
+    color: var(--tec-blue);
+    font-weight: bold;
+    border-left: 4px solid var(--tec-blue);
+}
+
+/* --- Contenido Principal --- */
+.main-content {
+    flex: 1;
+    padding: 35px 45px;
+}
+
+.page-title {
+    font-size: 28px;
+    color: var(--tec-blue);
+    margin-bottom: 25px;
+}
+
+/* --- Tarjeta del Alumno --- */
+.card-alumno {
+    background-color: var(--tec-white);
+    border: 1px solid var(--tec-border);
+    border-radius: 10px;
+    padding: 35px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 40px;
+    max-width: 1050px;
+}
+
+/* Izquierda: Foto + Datos */
+.info-izquierda {
+    display: flex;
+    gap: 30px;
+    align-items: center;
+    flex: 1.2;
+}
+
+.foto-contenedor {
+    width: 145px;
+    height: 175px;
+    border: 2px solid var(--tec-border);
+    border-radius: 8px;
+    overflow: hidden;
+    background-color: var(--tec-light);
+    flex-shrink: 0;
+}
+
+.foto-alumno {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.datos-basicos {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.fila-doble {
+    display: flex;
+    gap: 35px;
+}
+
+.etiqueta {
+    display: block;
+    font-size: 13px;
+    color: #666666;
+    margin-bottom: 3px;
+}
+
+.valor {
+    font-size: 16px;
+    font-weight: bold;
+    color: var(--tec-dark);
+}
+
+.badge-vigente {
+    display: inline-block;
+    background-color: #e6f4ea;
+    color: #137333;
+    font-size: 13px;
+    font-weight: bold;
+    padding: 4px 10px;
+    border-radius: 4px;
+}
+
+/* Derecha: Programa Seleccionado */
+.info-derecha {
+    flex: 1;
+    border-left: 1px solid var(--tec-border);
+    padding-left: 35px;
+}
+
+.programa-box {
+    background-color: var(--tec-light);
+    border: 1px solid var(--tec-border);
+    border-radius: 8px;
+    padding: 20px;
+}
+
+.programa-nombre {
+    font-size: 17px;
+    color: var(--tec-blue);
+    margin: 6px 0;
+}
+
+.programa-dependencia {
+    font-size: 14px;
+    color: #555555;
+    margin-bottom: 14px;
+}
+
+.programa-estado {
+    font-size: 13px;
+    color: var(--tec-dark);
+    padding-top: 10px;
+    border-top: 1px solid var(--tec-border);
+}
+
+/* --- Responsivo para pantallas chicas --- */
+@media (max-width: 850px) {
+    .layout {
+        flex-direction: column;
+    }
+    .sidebar {
+        width: 100%;
+        border-right: none;
+        border-bottom: 1px solid var(--tec-border);
+    }
+    .menu {
+        flex-direction: row;
+        overflow-x: auto;
+    }
+    .card-alumno {
+        flex-direction: column;
+    }
+    .info-derecha {
+        border-left: none;
+        border-top: 1px solid var(--tec-border);
+        padding-left: 0;
+        padding-top: 25px;
+        width: 100%;
+    }
+}

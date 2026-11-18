@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inicio - Jefe de Vinculación - Sistema de Servicio Social</title>
+    <link rel="stylesheet" href="../../css/jefeVinc/estilo_inicio.css">
+</head>
+<body>
+
+    <!-- Barra Superior -->
+    <header class="topbar">
+        <div class="topbar-left">
+            <img src="../img/TecCul.png" alt="Logo TecNM" class="logo-header">
+            <span class="titulo-sistema">Sistema de Servicio Social - Vinculación</span>
+        </div>
+        <div class="topbar-right">
+            <span class="rol-header"><span id="usuario-nombre"></span>JEFE(A) DE VINCULACIÓN</span>
+            <a href="../login.html" id="btn-salir" class="btn-salir">Salir</a>
+        </div>
+    </header>
+
+    <div class="layout">
+
+        <!-- Menú Lateral -->
+        <aside class="sidebar">
+            <nav class="menu">
+                <a href="inicio.html" class="menu-item active">Inicio</a>
+                <a href="cartas.html" class="menu-item">Cartas de Terminación</a>
+                <a href="datos_p.html" class="menu-item">Datos Personales</a>
+            </nav>
+        </aside>
+
+        <main class="main-content">
+            <h1 class="page-title">Panel de Vinculación</h1>
+
+            <div class="alerta-info">
+                Bienvenido(a), <strong id="nombre-bienvenida"></strong>. Aquí subes la carta de terminación
+                firmada de los alumnos que concluyeron su servicio social; el alumno la descarga en PDF
+                desde su sesión.
+            </div>
+            <div class="alerta-info alerta-error" id="alerta-error" role="alert" hidden></div>
+
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <span>Servicios Concluidos</span>
+                    <div class="stat-number" id="stat-concluidos">—</div>
+                </div>
+                <div class="stat-card">
+                    <span>Cartas por Subir</span>
+                    <div class="stat-number" id="stat-pendientes">—</div>
+                </div>
+                <div class="stat-card">
+                    <span>Cartas Subidas</span>
+                    <div class="stat-number" id="stat-subidas">—</div>
+                </div>
+            </div>
+
+            <section class="card-panel">
+                <div class="encabezado-panel">
+                    <h2 class="section-subtitle">Alumnos esperando su carta</h2>
+                    <div>
+                        <a href="cartas.html" class="btn-actualizar" style="text-decoration:none; display:inline-block;">Ir a cartas</a>
+                        <button type="button" class="btn-actualizar" id="btn-actualizar">Actualizar datos</button>
+                    </div>
+                </div>
+                <div style="overflow-x: auto;">
+                    <table class="tabla-simple">
+                        <thead>
+                            <tr>
+                                <th>Alumno</th>
+                                <th>No. de control</th>
+                                <th>Fin del servicio</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabla-pendientes-body"></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <section class="card-panel">
+                <h2 class="section-subtitle">Últimas cartas subidas</h2>
+                <div style="overflow-x: auto;">
+                    <table class="tabla-simple">
+                        <thead>
+                            <tr>
+                                <th>Alumno</th>
+                                <th>No. de control</th>
+                                <th>Subida el</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabla-recientes-body"></tbody>
+                    </table>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="../../js/sesion.js"></script>
+    <script src="../../js/jefeVinc/inicio.js"></script>
+</body>
+</html>

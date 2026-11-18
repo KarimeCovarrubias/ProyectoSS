@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel de Administración - Sistema de Servicio Social</title>
+    <link rel="stylesheet" href="../../css/admin/estilo_inicio.css">
+</head>
+<body>
+
+    <!-- Barra Superior -->
+    <header class="topbar">
+        <div class="topbar-left">
+            <img src="../img/TecCul.png" alt="Logo TecNM" class="logo-header">
+            <span class="titulo-sistema">Sistema de Servicio Social - Panel Admin</span>
+        </div>
+        <div class="topbar-right">
+            <span class="rol-header"><span id="admin-nombre"></span><span id="admin-rol-header">ADMINISTRADOR DEL SISTEMA</span></span>
+            <a href="../login.html" id="btn-salir" class="btn-salir">Salir</a>
+        </div>
+    </header>
+
+    <!-- Contenedor Principal -->
+    <div class="layout">
+
+        <!-- Menú Lateral -->
+        <aside class="sidebar">
+            <nav class="menu">
+                <a href="inicio.html" class="menu-item active">Inicio</a>
+                <a href="usuarios.html" class="menu-item">Gestión de Usuarios</a>
+                <a href="datos_p.html" class="menu-item">Datos Personales</a>
+            </nav>
+        </aside>
+
+        <!-- Área Principal -->
+        <main class="main-content">
+            <h1 class="page-title">Panel General de Administración</h1>
+
+            <div class="alerta-info">
+                Bienvenido(a), <strong id="nombre-bienvenida"></strong>. Desde aquí puedes supervisar
+                el estado general de la plataforma: usuarios, programas, expedientes y la actividad reciente.
+            </div>
+            <div class="alerta-info alerta-error" id="alerta-error" role="alert" hidden></div>
+
+            <!-- Tarjetas de resumen (datos reales de la base de datos) -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <span>Usuarios Registrados</span>
+                    <div class="stat-number" id="stat-usuarios">—</div>
+                </div>
+                <div class="stat-card">
+                    <span>Programas en Banco</span>
+                    <div class="stat-number" id="stat-banco">—</div>
+                </div>
+                <div class="stat-card">
+                    <span>Expedientes Activos</span>
+                    <div class="stat-number" id="stat-expedientes">—</div>
+                </div>
+            </div>
+
+            <section class="card-panel">
+                <div class="encabezado-panel">
+                    <h2 class="section-subtitle">Usuarios por rol</h2>
+                    <button type="button" class="btn-actualizar" id="btn-actualizar">Actualizar datos</button>
+                </div>
+                <div class="roles-grid" id="roles-resumen"></div>
+            </section>
+
+            <section class="card-panel">
+                <h2 class="section-subtitle">Actividad reciente (bitácora)</h2>
+                <div style="overflow-x: auto;">
+                    <table class="tabla-simple">
+                        <thead>
+                            <tr>
+                                <th>Fecha</th>
+                                <th>Usuario</th>
+                                <th>Acción</th>
+                                <th>Detalle</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabla-actividad-body">
+                            <!-- Se llena dinámicamente con JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="../../js/sesion.js"></script>
+    <script src="../../js/admin/inicio.js"></script>
+</body>
+</html>

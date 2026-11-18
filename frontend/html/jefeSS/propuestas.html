@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Propuestas Propias de alumnos | Servicio Social</title>
+    <link rel="stylesheet" href="../../css/jefeSS/estilo_jefe.css">
+</head>
+<body>
+    <header class="topbar">
+        <div class="topbar-left">
+            <img src="../img/TecCul.png" alt="Logo TecNM" class="logo-header">
+            <span class="titulo-sistema">Sistema de Servicio Social</span>
+            <span class="carrera-header">JEFE DE OFICINA DE SERVICIO SOCIAL</span>
+        </div>
+        <div class="topbar-right">
+            <a href="#" id="btn-salir" class="btn-salir">Salir</a>
+        </div>
+    </header>
+    <div class="layout">
+        <aside class="sidebar">
+            <nav class="menu">
+                <a href="inicio.html" class="menu-item">Inicio</a>
+                <a href="banco.html" class="menu-item">Banco de Propuestas</a>
+                <a href="propuestas.html" class="menu-item active">Propuestas Propias</a>
+                <a href="documentos.html" class="menu-item">Revisar Documentos</a>
+                <a href="plantillas.html" class="menu-item">Plantillas Word</a>
+                <a href="datos_p.html" class="menu-item">Datos Personales</a>
+            </nav>
+        </aside>
+        <main class="main-content">
+            <h1 class="page-title">Propuestas propias de alumnos</h1>
+            <div class="alerta-info">Al aprobar una propuesta propia se agrega al banco con los datos que captures 
+                y el alumno ve el resultado en su inicio. Si la rechazas, debes indicar el motivo y el alumno 
+                podrá elegir otro programa.</div>
+            <div id="mensaje" class="mensaje"></div>
+            <div class="filtros">
+                <label for="filtro-estatus">Mostrar:</label>
+                <select id="filtro-estatus">
+                    <option value="PENDIENTE">Pendientes de validar</option>
+                    <option value="APROBADA">Aprobadas</option>
+                    <option value="RECHAZADA">Rechazadas</option>
+                    <option value="TODAS">Todas</option>
+                </select>
+            </div>
+            <div id="lista-propuestas"><p class="texto-vacio">Cargando…</p></div>
+        </main>
+    </div>
+    <script src="../../js/sesion.js"></script>
+    <script src="../../js/jefeSS/jefe_comun.js"></script>
+    <script src="../../js/jefeSS/jefe_propuestas.js"></script>
+</body>
+</html>

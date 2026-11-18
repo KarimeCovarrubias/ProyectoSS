@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inicio - Oficina de Servicio Social</title>
+    <link rel="stylesheet" href="../../css/jefeSS/estilo_jefe.css">
+</head>
+<body>
+
+    <!-- Barra Superior -->
+    <header class="topbar">
+        <div class="topbar-left">
+            <img src="../img/TecCul.png" alt="Logo TecNM" class="logo-header">
+            <span class="titulo-sistema">Sistema de Servicio Social - Panel Directivo</span>
+        </div>
+        <div class="topbar-right">
+            <span class="rol-header">JEFE(A) DE OFICINA DE SERVICIO SOCIAL</span>
+            <a href="../login.html" id="btn-salir" class="btn-salir">Salir</a>
+        </div>
+    </header>
+
+    <!-- Contenedor Principal -->
+    <div class="layout">
+        
+        <!-- Menú Lateral -->
+        <aside class="sidebar">
+            <nav class="menu">
+                <a href="inicio.html" class="menu-item active">Inicio</a>
+                <a href="banco.html" class="menu-item">Banco de Propuestas</a>
+                <a href="propuestas.html" class="menu-item">Propuestas Propias</a>
+                <a href="documentos.html" class="menu-item">Revisar Documentos</a>
+                <a href="plantillas.html" class="menu-item">Plantillas Word</a>
+                <a href="datos_p.html" class="menu-item">Datos Personales</a>
+            </nav>
+        </aside>
+
+        <!-- Área Principal -->
+        <main class="main-content">
+            <h1 class="page-title">Panel de Control - Oficina de Servicio Social</h1>
+
+            <div class="alerta-info">
+                Bienvenido al sistema de gestión directiva. Desde aquí puedes administrar el banco de propuestas, dictaminar propuestas independientes de alumnos y revisar el estatus de sus expedientes.
+            </div>
+
+            <!-- Tarjetas de Resumen Rápido -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <span class="stat-title">Propuestas Propias Pendientes</span>
+                    <div class="stat-number" id="stat-pp">3</div>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-title">Documentos por Revisar</span>
+                    <div class="stat-number" id="stat-docs">12</div>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-title">Programas en Banco Activos</span>
+                    <div class="stat-number" id="stat-banco">8</div>
+                </div>
+            </div>
+
+            <section class="card-jefe">
+                <h2 class="section-subtitle">Accesos Directos Frecuentes</h2>
+                <p class="section-desc">
+                    Utiliza el menú lateral izquierdo para navegar entre las secciones de gestión:
+                </p>
+                <ul class="lista-accesos">
+                    <li><strong>Banco de Propuestas:</strong> Da de alta nuevos programas institucionales y consulta los lugares disponibles.</li>
+                    <li><strong>Propuestas Propias:</strong> Revisa el detalle de las propuestas subidas por los alumnos y decide si se aprueban o rechazan.</li>
+                    <li><strong>Revisión de Documentos:</strong> Valida u observa cartas de aceptación y reportes bimestrales.</li>
+                </ul>
+            </section>
+        </main>
+    </div>
+
+    <script src="../../js/sesion.js"></script>
+    <script src="../../js/jefeSS/jefe_comun.js"></script>
+    <script src="../../js/jefeSS/jefe_inicio.js"></script>
+</body>
+</html>

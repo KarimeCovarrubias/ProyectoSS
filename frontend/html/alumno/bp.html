@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Banco de Propuestas - Portal del Alumno</title>
+    <link rel="stylesheet" href="../../css/alumno/estilo_bp.css">
+</head>
+<body>
+
+    <!-- Barra Superior -->
+    <header class="topbar">
+        <div class="topbar-left">
+            <img src="../img/TecCul.png" alt="Logo TecNM" class="logo-header">
+            <span class="titulo-sistema">Sistema de Servicio Social</span>
+        </div>
+        <div class="topbar-right">
+            <span class="carrera-header" id="carrera-header">ING. EN SISTEMAS COMPUTACIONALES</span>
+            <a href="../login.html" id="btn-salir" class="btn-salir">Salir</a>
+        </div>
+    </header>
+
+    <!-- Contenedor Principal -->
+    <div class="layout">
+        
+        <!-- Menú Lateral -->
+        <aside class="sidebar">
+            <nav class="menu">
+                <a href="inicio.html" class="menu-item">Inicio</a>
+                <a href="carga.html" class="menu-item">Carga</a>
+                <a href="bp.html" class="menu-item active">BP</a>
+                <a href="pp.html" class="menu-item">PP</a>
+                <a href="datos_p.html" class="menu-item">Datos P</a>
+                <a href="subir.html" class="menu-item">Subir</a>
+            </nav>
+        </aside>
+
+        <!-- Área Principal -->
+        <main class="main-content">
+            <h1 class="page-title">Banco de Propuestas (BP)</h1>
+
+            <div class="alerta-info">
+                Consulta los programas institucionales disponibles en el banco de propuestas. Estos espacios son cargados y autorizados por la oficina de servicio social.
+            </div>
+
+            <section class="card-bp">
+                <h2 class="section-subtitle">Programas Institucionales Registrados</h2>
+                <div style="overflow-x: auto;">
+                    <table class="tabla-bp">
+                        <thead>
+                            <tr>
+                                <th>Nombre del Programa</th>
+                                <th>Dependencia / Empresa</th>
+                                <th>Responsable</th>
+                                <th>Actividades Principales</th>
+                                <th>Periodo</th>
+                                <th>Cupo Total</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabla-bp-body">
+                            <tr>
+                                <td colspan="6" style="text-align: center; color: #666;">Cargando banco de propuestas...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </main>
+    </div>
+    <script src="../../js/sesion.js"></script>
+    <script src="../../js/alumno/bp.js"></script>
+</body>
+</html>

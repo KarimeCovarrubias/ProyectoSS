@@ -1,0 +1,106 @@
+:root {
+    --tec-blue: #1b365d;
+    --tec-blue-hover: #032a61;
+    --tec-purple: #512a80;
+    --tec-dark: #222222;
+    --tec-light: #f4f6f9;
+    --tec-border: #dcdcdc;
+    --tec-white: #ffffff;
+}
+
+/* Corregido el guion por el asterisco */
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: Arial;
+}
+
+body {
+    background: linear-gradient(135deg, var(--tec-blue) 0%, var(--tec-purple) 100%);
+    color: var(--tec-dark);
+    line-height: 1.6;
+    min-height: 100vh;
+    display: grid;
+    place-items: center;
+    padding: 20px;
+}
+
+.login {
+    background-color: var(--tec-white);
+    padding: 50px;
+    border-radius: 10px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+    width: 100%;
+    max-width: 600px;
+    text-align: center;
+}
+
+.login h2 {
+    font-size: 32px;
+    margin-bottom: 1rem;
+    color: var(--tec-blue);
+}
+
+.info {
+    padding: 20px;
+    font-family: Arial;
+    font-size: 18px;
+}
+
+.logoTec {
+    height: 200px;
+    padding: 10px;
+}
+
+.alert {
+    font-size: 0.9rem;
+    margin-bottom: 1.5rem;
+    color: #555;
+}
+
+.form-group {
+    margin-bottom: 25px;
+    text-align: left;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 0.3rem;
+    font-size: 0.85rem;
+    font-weight: bold;
+    font-size: 17px;
+}
+
+.form-group input {
+    width: 100%;
+    padding: 0.6rem;
+    border: 1px solid var(--tec-border);
+    border-radius: 4px;
+}
+
+.ingresar[type="submit"] {
+    margin-top: 30px;
+    width: 100%;
+    padding: 0.75rem;
+    background-color: var(--tec-blue);
+    color: var(--tec-white);
+    border: none;
+    border-radius: 10px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.ingresar[type="submit"]:hover {
+    background-color: var(--tec-blue-hover);
+}
+
+.olvidada {
+    font-size: 17px;
+    padding-top: 20px;
+}
+
+.olvidada a {
+    text-decoration: none;
+    color: var(--tec-blue);
+}
