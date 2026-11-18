@@ -202,7 +202,6 @@ def admin_crear_usuario():
 
 
 # ======================================================= Importar Excel del Forms
-# (campo interno, palabras que debe contener el encabezado de la columna). El orden importa.
 COLUMNAS_FORMS = [
     ("apellido_paterno", ("paterno",)),
     ("apellido_materno", ("materno",)),
@@ -239,7 +238,6 @@ def _mapear_columnas(encabezados):
         norm = _normalizar(enc)
         for campo, palabras in COLUMNAS_FORMS:
             if any(p in norm for p in palabras):
-                # Forms agrega una columna "Nombre" propia (la cuenta): se prefiere "Nombre(s)"
                 if campo not in mapa or (campo == "nombre" and norm_elegida[campo] == "nombre"
                                          and norm != "nombre"):
                     mapa[campo] = i
@@ -327,7 +325,7 @@ def admin_importar_alumnos():
             existente = con.execute("SELECT id, rol FROM usuarios WHERE identificador = ?",
                                     (control,)).fetchone()
             if existente:
-                if existente["rol"] == "ALUMNO":      # ya existía: solo se registra su asistencia
+                if existente["rol"] == "ALUMNO":
                     con.execute(
                         "INSERT INTO asistencias_induccion (curso_id, alumno_id, forms_completos) "
                         "VALUES (?, ?, 1) ON CONFLICT(curso_id, alumno_id) DO UPDATE SET "

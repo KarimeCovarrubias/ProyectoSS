@@ -11,9 +11,9 @@ RUTA_SCHEMA = BASE / "schema.sql"
 def conectar():
     """Abre una conexión. Las llaves foráneas hay que activarlas en CADA conexión."""
     con = sqlite3.connect(RUTA_BD, timeout=10)
-    con.row_factory = sqlite3.Row          # permite fila["nombre"]
+    con.row_factory = sqlite3.Row
     con.execute("PRAGMA foreign_keys = ON")
-    con.execute("PRAGMA journal_mode = WAL")   # mejor con varios usuarios a la vez
+    con.execute("PRAGMA journal_mode = WAL")
     return con
 
 

@@ -7,7 +7,7 @@ from datetime import date
 DOMINIO_CORREO = "@culiacan.tecnm.mx"
 MIN_PORCENTAJE_CREDITOS = 70       # RF-01
 MIN_SEMESTRE = 7                   # RF-01
-MAX_BYTES_PDF = 5 * 1024 * 1024    # RF-07: 5 MB
+MAX_BYTES_PDF = 5 * 1024 * 1024    # RF-07: 5 MB pdf
 
 # AJUSTA este valor: total de créditos de la carrera según el plan de tu escuela.
 CREDITOS_TOTALES_CARRERA = 260
