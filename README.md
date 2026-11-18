@@ -32,6 +32,10 @@ https://apps.microsoft.com/detail/9NCVDN91XZQP?hl=neutral&gl=MX&ocid=pdpshare
 ```bash
 python -3.12 -m venv .venv
 ```
+o
+```bash
+py -3.12 -m venv .venv
+```
 
 ### Acceder al entorno virtual en Windows
 ```bash
