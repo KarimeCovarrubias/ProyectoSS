@@ -31,12 +31,9 @@
         <main class="main-content">
             <h1 class="page-title">Gestión de Usuarios y Asignación de Roles</h1>
 
-            <!-- 1. Importar alumnos desde el Excel de Forms -->
             <section class="card-panel">
                 <h2 class="section-subtitle">Importar alumnos (Excel del Forms)</h2>
                 <p class="ayuda">Descargue el Excel de respuestas del Forms del curso de inducción y súbalo aquí.
-                   Se crea una cuenta por alumno (usuario = número de control, correo = número de control@culiacan.tecnm.mx)
-                   y su <strong>contraseña inicial es la CURP</strong> que capturó en el Forms.
                    Puede descargar la lista de credenciales <strong>una sola vez</strong>.</p>
                 <form id="form-importar">
                     <div class="form-grid">
@@ -60,14 +57,8 @@
                 </form>
             </section>
 
-            <!-- 2. Registrar usuarios: personal y alumnos (casos especiales) -->
             <section class="card-panel">
                 <h2 class="section-subtitle">+ Registrar Usuario (Personal o Alumno)</h2>
-                <p class="ayuda">Los alumnos normalmente se registran importando el Excel del Forms.
-                   Use este formulario para un alumno solo en <strong>casos especiales</strong>
-                   (por ejemplo, si no aparece en el Forms): capture su número de control, CURP,
-                   carrera y semestre. Entrará con su número de control y su <strong>CURP</strong>
-                   como contraseña. Después podrá completar su plan y créditos en "Datos académicos".</p>
                 <form id="form-nuevo-usuario">
                     <div class="form-grid">
                         <div class="form-group">
@@ -106,7 +97,7 @@
                         </div>
                     </div>
 
-                    <!-- Campos exclusivos del alumno (se muestran al elegir el rol Alumno) -->
+                    <!-- Campos del alumno (se muestran al elegir el rol Alumno) -->
                     <div class="form-grid" id="bloque-alumno" hidden>
                         <div class="form-group">
                             <label for="alumno-curp">CURP</label>
@@ -153,7 +144,7 @@
                 </form>
             </section>
 
-            <!-- 3. Datos académicos de un alumno (aparece al pulsar "Datos académicos") -->
+            <!-- Datos académicos de un alumno -->
             <section class="card-panel" id="panel-academicos" hidden>
                 <h2 class="section-subtitle">Datos académicos de <span id="acad-nombre"></span></h2>
                 <p class="ayuda">El alumno no podrá elegir programa hasta que se capturen su plan y sus créditos.</p>
@@ -188,7 +179,7 @@
                 </form>
             </section>
 
-            <!-- 4. Listado -->
+            <!-- Listado d eusuarios -->
             <section class="card-panel">
                 <h2 class="section-subtitle">Usuarios en el Sistema</h2>
                 <div class="filtros">

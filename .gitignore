@@ -2,5 +2,4 @@
 .venv/
 
 # Copia completa de la base (esquema + datos): contiene hashes de contraseñas
-#backend/dump_completo.sql
 #backend/servicio_social_backup_*.db

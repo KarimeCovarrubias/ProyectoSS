@@ -17,7 +17,6 @@ ProyectoSS/
 ├── crear_bd.py                # Crea la base desde cero y el primer administrador
 ├── requirements.txt           # Dependencias de Python
 ├── README.md                  # Este documento
-├── Explicacion_Conexion_BD_e_Importacion_Excel.docx / .pdf
 ├── backend/
 │   ├── __init__.py
 │   ├── db.py                  # Conexión a SQLite
@@ -34,7 +33,6 @@ ProyectoSS/
 │   ├── documentos_word.py     # Generación de .docx
 │   ├── documentos_pdf.py      # Generación de reportes .pdf
 │   ├── migrar_bd.py           # Migración de la base con respaldo
-│   ├── dump_completo.sql      # Volcado SQL con datos reales (confidencial)
 │   ├── servicio_social.db     # Base de datos SQLite
 │   └── rutas/
 │       ├── archivos.py        # Guardado seguro de archivos subidos
@@ -54,8 +52,6 @@ ProyectoSS/
 | `crear_bd.py` | Borra la base anterior, ejecuta `schema.sql` y da de alta al primer administrador. |
 | `requirements.txt` | Lista las dependencias de Python con sus versiones. |
 | `README.md` | Documentación general del proyecto. |
-| `Explicacion_Conexion_BD_e_Importacion_Excel.docx` | Documento técnico sobre la conexión a la base y la importación del Excel. |
-| `Explicacion_Conexion_BD_e_Importacion_Excel.pdf` | La misma explicación en PDF. |
 
 ### 1.2. Carpeta `backend/`
 
@@ -75,8 +71,6 @@ ProyectoSS/
 | `perfil_routes.py` | API de datos personales y de contacto del personal (jefes y administrador). |
 | `documentos_word.py` | Genera los formatos Word editables (solicitud, carta de presentación, constancia). |
 | `documentos_pdf.py` | Genera el reporte PDF de documentos faltantes sin librerías externas. |
-| `migrar_bd.py` | Migra una base existente al esquema vigente y crea un respaldo antes de tocar los datos. |
-| `dump_completo.sql` | Volcado SQL de apoyo con datos reales; contiene hashes de contraseñas y es confidencial. |
 | `servicio_social.db` | Base de datos SQLite del sistema (en modo WAL aparecen también `-wal` y `-shm`). |
 | `rutas/archivos.py` | Valida y guarda los archivos subidos con nombre generado dentro de `uploads/`. |
 | `rutas/documentos.py` | Abre o descarga documentos verificando rol y propiedad, y entrega la carta de terminación del alumno. |
@@ -315,7 +309,7 @@ Todas las rutas requieren `ADMINISTRADOR`.
 - **Conexión:** `backend/db.py` (`conectar()` para lecturas y `transaccion()` para escrituras).
 - **Tablas (21):** `usuarios`, `alumnos`, `recuperaciones_password`, `cursos_induccion`, `asistencias_induccion`, `forms_induccion`, `empresas_receptoras`, `programas`, `planes_servicio`, `servicios_sociales`, `bajas`, `registro_horas`, `periodos_entrega`, `documentos`, `observaciones`, `plantillas_documento`, `expediciones`, `constancias`, `notificaciones`, `bitacora`, `contacto_personal`.
 
-Para recrearla: `python crear_bd.py`. Para migrarla conservando datos: `python -m backend.migrar_bd`.
+Para recrearla: `python crear_bd.py`.
 
 ---
 
@@ -455,4 +449,3 @@ Por cuestiones de seguridad se ocultan las siguientes cosas:
 - La importación del Excel crea la cuenta, los datos del alumno y la asistencia a inducción; **no** crea el servicio social ni captura plan y créditos.
 - Las horas no se capturan a mano: se acumulan 160 horas por cada reporte bimestral validado (máximo 3 reportes).
 - La carta de terminación la genera Vinculación en Word; el alumno la firma, sube el PDF y Vinculación lo valida para liberar el servicio.
-- `backend/dump_completo.sql` contiene datos reales y hashes de contraseñas: no debe compartirse ni publicarse.
