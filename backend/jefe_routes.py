@@ -7,6 +7,7 @@ y RF-17 (validar el programa contra el plan del alumno).
 """
 from __future__ import annotations
 
+import io
 import uuid
 from contextlib import closing
 from datetime import date, datetime, timedelta, timezone
@@ -15,10 +16,12 @@ from pathlib import Path
 from flask import Blueprint, jsonify, request, send_file, session
 
 from backend.comun import (
-    HORAS_POR_REPORTE, NOMBRE_SQL, avance_horas, documentos_faltantes,
-    horas_acumuladas, liberar_cupo, notificar, notificar_rol, quizas_concluir,
+    HORAS_POR_REPORTE, NOMBRE_SQL, avance_horas, documento_vigente,
+    documentos_faltantes, documentos_requeridos, horas_acumuladas, liberar_cupo,
+    notificar, notificar_rol, quizas_concluir,
 )
 from backend.db import conectar, registrar_bitacora, transaccion
+from backend.documentos_pdf import generar_pdf_tabla
 from backend.rutas import archivos
 from backend.seguridad import error, login_requerido
 from backend.validaciones import (
@@ -110,6 +113,14 @@ def _nombre_documento(tipo, numero_reporte=0):
     if tipo == "REPORTE_BIMESTRAL":
         return f"Reporte bimestral #{numero_reporte}"
     return TIPOS_PLANTILLA.get(tipo, tipo).split(" (")[0]
+
+
+def _fecha_corta(texto):
+    """'2026-11-24' -> '24/11/2026' (para los reportes impresos)."""
+    try:
+        return date.fromisoformat(str(texto)).strftime("%d/%m/%Y")
+    except (TypeError, ValueError):
+        return str(texto or "—")
 
 
 # ============================================================ Plantillas en Word
@@ -560,7 +571,8 @@ def jefe_validar_propuesta_propia(programa_id):
 @login_requerido(JEFE)
 def jefe_listar_documentos():
     estatus = request.args.get("estatus", "PENDIENTE").strip().upper()
-    where, params = "d.estatus <> 'REEMPLAZADO'", []
+    # La carta de terminación la revisa Vinculación, no la Oficina de SS.
+    where, params = "d.estatus <> 'REEMPLAZADO' AND d.tipo <> 'CARTA_TERMINACION'", []
     if estatus in ("PENDIENTE", "VALIDADO", "OBSERVADO"):
         where += " AND d.estatus = ?"
         params.append(estatus)
@@ -623,6 +635,8 @@ def jefe_revisar_documento(documento_id):
                WHERE d.id = ?""", (documento_id,)).fetchone()
         if not doc:
             return error("Documento no encontrado", 404)
+        if doc["tipo"] == "CARTA_TERMINACION":
+            return error("La carta de terminación la valida el Jefe de Vinculación.", 403)
         cur = con.execute(
             "UPDATE documentos SET estatus = ?, revisado_por = ?, revisado_en = datetime('now') "
             "WHERE id = ? AND estatus = 'PENDIENTE'",
@@ -644,7 +658,7 @@ def jefe_revisar_documento(documento_id):
                             f"(total: {horas_acumuladas(con, doc['servicio_id'])} de "
                             f"{servicio['horas_requeridas']}).")
             notificar(con, doc["alumno_id"], mensaje)
-            if doc["tipo"] in ("MEMORIA_FINAL", "CARTA_TERMINACION"):
+            if doc["tipo"] == "MEMORIA_FINAL":
                 notificar_rol(con, "JEFE_VINCULACION",
                               f"El documento \"{nombre}\" del alumno (servicio "
                               f"{doc['servicio_id']}) fue validado.")
@@ -1012,6 +1026,99 @@ def jefe_reportes_faltantes():
                     "mensaje": "Reporte generado correctamente"})
 
 
+# ====================== Reporte PDF de documentos no entregados a tiempo
+@jefe_bp.get("/api/jefe/reportes-faltantes/pdf")
+@login_requerido(JEFE)
+def jefe_reportes_faltantes_pdf():
+    """PDF con los alumnos que no tienen validados sus documentos al vencer el plazo.
+
+    Se revisan TODOS los documentos requeridos (no solo los reportes
+    bimestrales) contra los periodos de entrega globales. Se incluyen los
+    documentos sin subir, pendientes de validación u observados cuya fecha
+    límite ya pasó.
+    """
+    hoy = date.today()
+    referencia = hoy.isoformat()
+    with closing(conectar()) as con:
+        periodos = {
+            (fila["tipo"], fila["numero_reporte"]): fila
+            for fila in con.execute(
+                "SELECT tipo, numero_reporte, fecha_inicio, fecha_fin "
+                "FROM periodos_entrega")
+        }
+        servicios = con.execute(
+            f"""SELECT s.id AS servicio_id, u.identificador,
+                       {NOMBRE_SQL} AS alumno_nombre, a.carrera,
+                       p.nombre AS programa
+                FROM servicios_sociales s
+                JOIN usuarios u ON u.id = s.alumno_id
+                JOIN alumnos a ON a.usuario_id = s.alumno_id
+                JOIN programas p ON p.id = s.programa_id
+                WHERE s.estatus <> 'BAJA'
+                ORDER BY a.carrera, u.apellido_paterno, u.apellido_materno, u.nombre"""
+        ).fetchall()
+
+        filas = []
+        for servicio in servicios:
+            for tipo, numero in documentos_requeridos(con, servicio["servicio_id"]):
+                periodo = periodos.get((tipo, numero))
+                if not periodo or periodo["fecha_fin"] >= referencia:
+                    continue
+                doc = documento_vigente(con, servicio["servicio_id"], tipo, numero)
+                if doc and doc["estatus"] == "VALIDADO":
+                    continue
+                estado = doc["estatus"] if doc else "SIN_SUBIR"
+                etiqueta = {
+                    "SIN_SUBIR": "Sin subir",
+                    "PENDIENTE": "Pendiente de validación",
+                    "OBSERVADO": "Observado",
+                }.get(estado, estado)
+                filas.append({
+                    "alumno": servicio["alumno_nombre"],
+                    "control": servicio["identificador"],
+                    "carrera": servicio["carrera"],
+                    "programa": servicio["programa"],
+                    "documento": _nombre_documento(tipo, numero),
+                    "limite": _fecha_corta(periodo["fecha_fin"]),
+                    "subido": _fecha_corta(doc["subido_en"][:10]) if doc else "—",
+                    "estado": etiqueta,
+                })
+
+    filas.sort(key=lambda f: (f["carrera"] or "", f["alumno"] or "",
+                              f["limite"], f["documento"]))
+    alumnos = len({(f["control"], f["alumno"]) for f in filas})
+    resumen = [
+        f"Fecha de corte: {_fecha_corta(referencia)}",
+        f"Alumnos con documentos pendientes: {alumnos}",
+        f"Documentos pendientes: {len(filas)}",
+    ]
+    columnas = [
+        ("Alumno", 140, "alumno"),
+        ("No. de control", 58, "control"),
+        ("Carrera", 110, "carrera"),
+        ("Programa", 140, "programa"),
+        ("Documento", 110, "documento"),
+        ("Fecha límite", 58, "limite"),
+        ("Subido", 58, "subido"),
+        ("Estado", 66, "estado"),
+    ]
+    contenido = generar_pdf_tabla(
+        "REPORTE DE ALUMNOS CON DOCUMENTOS PENDIENTES",
+        "Documentos sin subir, pendientes de validación u observados "
+        "cuya fecha límite ya venció",
+        columnas, filas, resumen=resumen,
+        nota="Este reporte se genera a partir de los periodos de entrega definidos "
+             "por la Oficina de Servicio Social y del último documento vigente "
+             "de cada alumno.")
+
+    nombre = f"reporte_documentos_pendientes_{referencia}.pdf"
+    with transaccion() as con:
+        registrar_bitacora(con, session["usuario_id"], "DESCARGAR_REPORTE_PDF",
+                           f"Documentos pendientes al {referencia} ({len(filas)} filas)")
+    return send_file(io.BytesIO(contenido), as_attachment=True,
+                     download_name=nombre, mimetype="application/pdf")
+
+
 # ================================================== Planes de servicio (RF-13)
 @jefe_bp.get("/api/jefe/planes")
 @login_requerido(JEFE)
@@ -1195,7 +1302,8 @@ def jefe_resumen():
             "propuestas_pendientes": contar(
                 "SELECT COUNT(*) FROM programas WHERE tipo = 'PROPIA' AND estatus = 'PENDIENTE'"),
             "documentos_pendientes": contar(
-                "SELECT COUNT(*) FROM documentos WHERE estatus = 'PENDIENTE'"),
+                "SELECT COUNT(*) FROM documentos WHERE estatus = 'PENDIENTE' "
+                "AND tipo <> 'CARTA_TERMINACION'"),
             "programas_banco": contar(
                 "SELECT COUNT(*) FROM programas WHERE tipo = 'BANCO' AND estatus = 'DISPONIBLE'"),
             "servicios_activos": contar(

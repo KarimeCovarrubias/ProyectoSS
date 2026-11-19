@@ -5,6 +5,13 @@
 const $ = (id) => document.getElementById(id);
 const MAX_BYTES = 5 * 1024 * 1024;       // 5 MB
 
+const ESTADO_PDF = {
+    SIN_SUBIR: { texto: 'Sin subir', clase: 'estado-inactivo' },
+    PENDIENTE: { texto: 'Por revisar', clase: 'estado-pendiente' },
+    OBSERVADO: { texto: 'Observado', clase: 'estado-observado' },
+    VALIDADO: { texto: 'Validado', clase: 'estado-activo' }
+};
+
 let paginaActual = 1;
 let temporizadorBusqueda = null;
 let numeroSolicitud = 0;
@@ -42,7 +49,8 @@ async function subirCarta(servicio, archivo, boton) {
         ? `${servicio.nombre} ya tiene una carta. ¿Reemplazarla con "${archivo.name}"?\n` +
           'El alumno verá la nueva versión.'
         : `¿Subir la carta de terminación en Word (editable) de ${servicio.nombre}?\n` +
-          `Archivo: ${archivo.name}\nEl alumno la descargará, la firmará y subirá el PDF.`;
+          `Archivo: ${archivo.name}\nEl alumno la descargará, la firmará y subirá el PDF ` +
+          'para que usted lo valide.';
     if (!confirm(pregunta)) return;
 
     const datos = new FormData();
@@ -63,6 +71,42 @@ async function subirCarta(servicio, archivo, boton) {
     }
 }
 
+async function revisarCarta(servicio, accion, texto) {
+    const respuesta = await api(
+        `/api/vinculacion/servicios/${servicio.servicio_id}/carta/revisar`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ accion, texto })
+        });
+    mostrarMensaje(`${respuesta.mensaje} (${servicio.nombre}).`, 'ok');
+    cargarServicios();
+}
+
+async function validarCarta(servicio) {
+    if (!confirm(`¿Validar la carta de terminación de ${servicio.nombre}?\n` +
+                 'Su servicio social quedará LIBERADO.')) return;
+    try {
+        await revisarCarta(servicio, 'VALIDAR');
+    } catch (e) {
+        mostrarMensaje(e.message, 'error');
+    }
+}
+
+async function observarCarta(servicio) {
+    const texto = prompt(`Observaciones para ${servicio.nombre}:\n` +
+                         'El alumno podrá corregir y subir otra versión.');
+    if (texto === null) return;
+    if (!texto.trim()) {
+        mostrarMensaje('Escriba las observaciones para que el alumno sepa qué corregir.', 'error');
+        return;
+    }
+    try {
+        await revisarCarta(servicio, 'OBSERVAR', texto.trim());
+    } catch (e) {
+        mostrarMensaje(e.message, 'error');
+    }
+}
+
 function filaServicio(s) {
     const fila = document.createElement('tr');
 
@@ -78,6 +122,20 @@ function filaServicio(s) {
         tdCarta.appendChild(detalle);
     }
 
+    const tdPdf = document.createElement('td');
+    const estado = ESTADO_PDF[s.alumno_carta_estatus] || ESTADO_PDF.SIN_SUBIR;
+    const badgePdf = document.createElement('span');
+    badgePdf.className = 'badge-rol ' + estado.clase;
+    badgePdf.textContent = estado.texto;
+    tdPdf.appendChild(badgePdf);
+    if (s.alumno_carta_id) {
+        const detalle = document.createElement('small');
+        detalle.className = 'ayuda';
+        detalle.textContent = (s.alumno_carta_version ? ` v${s.alumno_carta_version} · ` : ' ')
+            + fechaHora(s.alumno_carta_subida_en);
+        tdPdf.appendChild(detalle);
+    }
+
     const tdAcciones = document.createElement('td');
     const contenedor = document.createElement('div');
     contenedor.className = 'acciones';
@@ -90,7 +148,7 @@ function filaServicio(s) {
     const boton = document.createElement('button');
     boton.type = 'button';
     boton.className = s.documento_id ? 'btn-secundario' : 'btn-activar';
-    boton.textContent = s.documento_id ? 'Reemplazar' : 'Subir carta';
+    boton.textContent = s.documento_id ? 'Reemplazar Word' : 'Subir Word';
     boton.addEventListener('click', () => entrada.click());
     entrada.addEventListener('change', () => {
         const archivo = entrada.files[0];
@@ -100,18 +158,43 @@ function filaServicio(s) {
 
     contenedor.append(boton, entrada);
     if (s.documento_id) {
-        const ver = document.createElement('a');          // abre el PDF en otra pestaña
+        const ver = document.createElement('a');          // abre el Word en otra pestaña
         ver.className = 'btn-secundario';
         ver.href = `/api/documentos/${s.documento_id}/archivo`;
         ver.target = '_blank';
         ver.rel = 'noopener';
-        ver.textContent = 'Descargar';
+        ver.textContent = 'Ver Word';
         contenedor.appendChild(ver);
+    }
+    if (s.alumno_carta_id) {
+        const verPdf = document.createElement('a');
+        verPdf.className = 'btn-secundario';
+        verPdf.href = `/api/documentos/${s.alumno_carta_id}/archivo`;
+        verPdf.target = '_blank';
+        verPdf.rel = 'noopener';
+        verPdf.textContent = 'Ver PDF';
+        contenedor.appendChild(verPdf);
+    }
+    if (s.alumno_carta_estatus === 'PENDIENTE') {
+        const validar = document.createElement('button');
+        validar.type = 'button';
+        validar.className = 'btn-activar';
+        validar.textContent = 'Validar PDF';
+        validar.addEventListener('click', () => validarCarta(s));
+
+        const observar = document.createElement('button');
+        observar.type = 'button';
+        observar.className = 'btn-eliminar';
+        observar.textContent = 'Observar';
+        observar.addEventListener('click', () => observarCarta(s));
+
+        contenedor.append(validar, observar);
     }
     tdAcciones.appendChild(contenedor);
 
     fila.append(celda(s.nombre), celda(s.identificador), celda(s.carrera),
-                celda(s.programa), celda(fechaSolo(s.fecha_fin)), tdCarta, tdAcciones);
+                celda(s.programa), celda(fechaSolo(s.fecha_fin)), tdCarta, tdPdf,
+                tdAcciones);
     return fila;
 }
 
@@ -132,7 +215,7 @@ async function cargarServicios() {
         if (datos.servicios.length === 0) {
             const fila = document.createElement('tr');
             const td = celda('No hay alumnos con expediente validado que coincidan.');
-            td.colSpan = 7;
+            td.colSpan = 8;
             td.className = 'texto-vacio';
             fila.appendChild(td);
             cuerpo.appendChild(fila);

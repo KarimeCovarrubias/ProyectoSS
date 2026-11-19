@@ -38,17 +38,21 @@
                 <h2 class="section-subtitle">Alumnos con expediente validado</h2>
                 <p class="ayuda" style="margin-bottom: 15px;">
                     Sube la carta de terminación en <strong>Word (.docx)</strong> editable (máximo 5 MB).
-                    El alumno la descarga, la firma y sube el PDF; al recibirla, su servicio social queda
-                    <strong>LIBERADO</strong>.
-                    Si subes otra, reemplaza a la anterior.
+                    El alumno la descarga, la firma y sube el PDF. Ese PDF aparece como
+                    <strong>Por revisar</strong>: valídalo para que su servicio social quede
+                    <strong>LIBERADO</strong>, u obsérvalo para que suba una nueva versión.
+                    Si subes otro Word, reemplaza al anterior.
                 </p>
 
                 <div class="filtros">
                     <input type="search" id="filtro-q" placeholder="Buscar por nombre o número de control">
                     <select id="filtro-estado">
                         <option value="">Todos</option>
-                        <option value="pendientes">Pendientes de carta</option>
-                        <option value="subidas">Con carta subida</option>
+                        <option value="pendientes">Sin carta en Word</option>
+                        <option value="subidas">Word subido</option>
+                        <option value="por_revisar">PDF por revisar</option>
+                        <option value="observados">PDF observado</option>
+                        <option value="liberados">Liberados</option>
                     </select>
                 </div>
                 <p class="msg" id="mensaje-lista" role="status"></p>
@@ -62,7 +66,8 @@
                                 <th>Carrera</th>
                                 <th>Programa</th>
                                 <th>Fin del servicio</th>
-                                <th>Carta</th>
+                                <th>Carta Word</th>
+                                <th>PDF del alumno</th>
                                 <th>Acciones</th>
                             </tr>
                         </thead>

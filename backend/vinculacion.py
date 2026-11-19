@@ -1,7 +1,9 @@
 """Rutas del Jefe del Departamento de Vinculación.
 
 - Sube la carta de terminación en Word (.docx) para que el alumno la descargue,
-  la firme y entregue el PDF. Al recibirla, el servicio queda LIBERADO.
+  la firme y entregue el PDF.
+- Revisa el PDF firmado del alumno: al validarlo, el servicio queda LIBERADO;
+  si lo observa, el alumno puede corregirlo y subir otra versión.
 - Genera e imprime la constancia de terminación con folio único (RF-10, CU12).
 """
 from __future__ import annotations
@@ -14,7 +16,8 @@ from pathlib import Path
 from flask import Blueprint, jsonify, request, send_file, session
 
 from backend.comun import (
-    NOMBRE_SQL, documentos_faltantes, horas_acumuladas, listo_para_carta, notificar,
+    NOMBRE_SQL, carta_firmada_alumno, documentos_faltantes, horas_acumuladas,
+    listo_para_carta, notificar,
 )
 from backend.db import conectar, registrar_bitacora, transaccion
 from backend.documentos_word import generar_docx
@@ -45,7 +48,7 @@ def _escapar_like(texto):
 def resumen():
     with closing(conectar()) as con:
         filas = con.execute(
-            f"SELECT s.id AS servicio_id, s.fecha_fin, {NOMBRE_SQL} AS nombre, "
+            f"SELECT s.id AS servicio_id, s.alumno_id, s.fecha_fin, {NOMBRE_SQL} AS nombre, "
             "       u.identificador, d.id AS documento_id, d.subido_en "
             "FROM servicios_sociales s JOIN usuarios u ON u.id = s.alumno_id "
             f"{UNION_CARTA} WHERE s.estatus <> 'BAJA' "
@@ -55,6 +58,14 @@ def resumen():
         listos = [f for f in filas if listo_para_carta(con, f["servicio_id"])]
         subidas = [f for f in listos if f["documento_id"]]
         pendientes = [dict(f) for f in listos if not f["documento_id"]][:5]
+        por_revisar = 0
+        liberados = 0
+        for fila in listos:
+            pdf = carta_firmada_alumno(con, fila["servicio_id"], fila["alumno_id"])
+            if pdf and pdf["estatus"] == "PENDIENTE":
+                por_revisar += 1
+            elif pdf and pdf["estatus"] == "VALIDADO":
+                liberados += 1
         recientes = [dict(f) for f in con.execute(
             f"SELECT {NOMBRE_SQL} AS nombre, u.identificador, d.subido_en "
             "FROM documentos d JOIN servicios_sociales s ON s.id = d.servicio_id "
@@ -66,6 +77,7 @@ def resumen():
         constancias = con.execute("SELECT COUNT(*) FROM constancias").fetchone()[0]
     return jsonify({"concluidos": len(listos), "cartas_subidas": len(subidas),
                     "cartas_pendientes": len(listos) - len(subidas),
+                    "por_revisar": por_revisar, "liberados": liberados,
                     "constancias_emitidas": constancias,
                     "pendientes": pendientes, "recientes": recientes})
 
@@ -74,8 +86,12 @@ def resumen():
 @bp.get("/servicios")
 @solo_vinculacion
 def listar_servicios():
-    """Servicios concluidos, con búsqueda (?q=), filtro (?estado=pendientes|subidas)
-    y paginación (?pagina=). Primero van los que aún no tienen carta firmada."""
+    """Servicios concluidos, con búsqueda (?q=), filtro (?estado=) y paginación
+    (?pagina=). Primero van los que aún no tienen carta firmada.
+
+    ``estado`` acepta: ``pendientes`` (sin Word), ``subidas`` (Word subido),
+    ``por_revisar`` (PDF del alumno pendiente), ``observados`` y ``liberados``.
+    """
     q = request.args.get("q", "").strip()
     estado = request.args.get("estado", "").strip()
     try:
@@ -97,7 +113,8 @@ def listar_servicios():
 
     with closing(conectar()) as con:
         filas = con.execute(
-            f"SELECT s.id AS servicio_id, {NOMBRE_SQL} AS nombre, u.identificador, a.carrera, "
+            f"SELECT s.id AS servicio_id, s.alumno_id, {NOMBRE_SQL} AS nombre, "
+            "       u.identificador, a.carrera, "
             "       p.nombre AS programa, s.fecha_fin, "
             "       d.id AS documento_id, d.version, d.subido_en, d.nombre_original "
             f"{desde} {donde} ORDER BY s.fecha_fin, s.id", parametros).fetchall()
@@ -112,7 +129,20 @@ def listar_servicios():
                 continue
             if estado == "subidas" and not fila["documento_id"]:
                 continue
-            servicios.append(dict(fila))
+            item = dict(fila)
+            pdf = carta_firmada_alumno(con, fila["servicio_id"], fila["alumno_id"])
+            item["alumno_carta_id"] = pdf["id"] if pdf else None
+            item["alumno_carta_estatus"] = pdf["estatus"] if pdf else "SIN_SUBIR"
+            item["alumno_carta_version"] = pdf["version"] if pdf else None
+            item["alumno_carta_subida_en"] = pdf["subido_en"] if pdf else None
+            item["alumno_carta_nombre"] = pdf["nombre_original"] if pdf else None
+            if estado == "por_revisar" and item["alumno_carta_estatus"] != "PENDIENTE":
+                continue
+            if estado == "observados" and item["alumno_carta_estatus"] != "OBSERVADO":
+                continue
+            if estado == "liberados" and item["alumno_carta_estatus"] != "VALIDADO":
+                continue
+            servicios.append(item)
 
         total = len(servicios)
         paginas = max(-(-total // POR_PAGINA), 1)
@@ -129,8 +159,9 @@ def listar_servicios():
 def subir_carta(servicio_id):
     """Sube (o reemplaza) la carta de terminación editable en Word (.docx).
 
-    El alumno la descarga, la firma y sube el PDF; al recibirlo, su servicio
-    queda LIBERADO. Solo se permite cuando el expediente ya está validado.
+    El alumno la descarga, la firma y sube el PDF. Ese PDF queda PENDIENTE
+    hasta que Vinculación lo valide; solo entonces el servicio queda LIBERADO.
+    Solo se permite cuando el expediente ya está validado.
     """
     archivo = request.files.get("archivo")
     if not archivo or not archivo.filename:
@@ -183,10 +214,10 @@ def subir_carta(servicio_id):
                 "INSERT INTO notificaciones (usuario_id, mensaje) VALUES (?, ?)",
                 (servicio["alumno_id"],
                  "Tu carta de terminación ya está disponible para descargar en Word. "
-                 "Descárgala, fírmala y súbela en PDF para liberar tu servicio social."
+                 "Descárgala, fírmala y súbela en PDF para que Vinculación la valide."
                  if version == 1 else
                  "Se actualizó tu carta de terminación. Descarga la nueva versión en Word, "
-                 "fírmala y súbela en PDF."))
+                 "fírmala y súbela en PDF para que Vinculación la valide."))
             registrar_bitacora(con, session["usuario_id"], "SUBIR_CARTA_TERMINACION",
                                f"{nombre_alumno} (servicio {servicio_id}), versión {version}")
     except Exception:
@@ -196,6 +227,83 @@ def subir_carta(servicio_id):
 
     return jsonify({"mensaje": "Carta de terminación subida correctamente",
                     "version": version}), 201
+
+
+# ------------------------------------- Revisión del PDF firmado por el alumno
+@bp.post("/servicios/<int:servicio_id>/carta/revisar")
+@solo_vinculacion
+def revisar_carta_alumno(servicio_id):
+    """VALIDA u OBSERVA el PDF firmado que subió el alumno.
+
+    Al validarlo, el servicio social cambia a LIBERADO. Si se observa, el alumno
+    recibe el comentario y puede subir una nueva versión.
+    """
+    datos = request.get_json(silent=True) or {}
+    accion = str(datos.get("accion", "")).strip().upper()
+    texto = str(datos.get("texto", "")).strip()
+    if accion not in ("VALIDAR", "OBSERVAR"):
+        return error("Acción no válida", 400)
+    if accion == "OBSERVAR" and not texto:
+        return error("Escriba las observaciones para que el alumno sepa qué corregir", 400)
+    if len(texto) > 2000:
+        return error("Las observaciones no pueden pasar de 2000 caracteres", 400)
+
+    with transaccion() as con:
+        servicio = con.execute(
+            "SELECT alumno_id, estatus FROM servicios_sociales WHERE id = ?",
+            (servicio_id,)).fetchone()
+        if servicio is None:
+            return error("El servicio social no existe", 404)
+        if not listo_para_carta(con, servicio_id):
+            return error("El expediente del alumno aún no está completo y validado.", 409)
+
+        doc = con.execute(
+            """SELECT d.id, d.estatus
+               FROM documentos d JOIN usuarios u ON u.id = d.subido_por
+               WHERE d.servicio_id = ? AND d.tipo = 'CARTA_TERMINACION'
+                 AND d.estatus = 'PENDIENTE' AND u.rol = 'ALUMNO'
+               ORDER BY d.version DESC, d.id DESC LIMIT 1""",
+            (servicio_id,)).fetchone()
+        if doc is None:
+            return error("No hay una carta de terminación del alumno pendiente de revisión.",
+                         409)
+
+        nuevo = "VALIDADO" if accion == "VALIDAR" else "OBSERVADO"
+        cursor = con.execute(
+            "UPDATE documentos SET estatus = ?, revisado_por = ?, "
+            "revisado_en = datetime('now') WHERE id = ? AND estatus = 'PENDIENTE'",
+            (nuevo, session["usuario_id"], doc["id"]))
+        if cursor.rowcount == 0:
+            return error("La carta ya fue revisada o fue reemplazada por el alumno.", 409)
+
+        if accion == "OBSERVAR":
+            con.execute("INSERT INTO observaciones (documento_id, autor_id, texto) "
+                        "VALUES (?, ?, ?)",
+                        (doc["id"], session["usuario_id"], texto))
+            con.execute(
+                "INSERT INTO notificaciones (usuario_id, mensaje) VALUES (?, ?)",
+                (servicio["alumno_id"],
+                 "Tu carta de terminación firmada tiene observaciones: " + texto +
+                 ". Corrige el documento y sube una nueva versión en PDF."))
+        else:
+            con.execute(
+                "UPDATE servicios_sociales SET estatus = 'LIBERADO', "
+                "fecha_fin = COALESCE(fecha_fin, ?), actualizado_en = datetime('now') "
+                "WHERE id = ?", (date.today().isoformat(), servicio_id))
+            con.execute(
+                "INSERT INTO notificaciones (usuario_id, mensaje) VALUES (?, ?)",
+                (servicio["alumno_id"],
+                 "El Jefe de Vinculación validó tu carta de terminación firmada. "
+                 "Tu servicio social quedó LIBERADO."))
+
+        registrar_bitacora(con, session["usuario_id"], "REVISAR_CARTA_TERMINACION",
+                           f"Servicio {servicio_id}, documento {doc['id']}: {nuevo}")
+
+    if accion == "VALIDAR":
+        return jsonify({"ok": True, "liberado": True,
+                        "mensaje": "Carta validada. El servicio social quedó LIBERADO."})
+    return jsonify({"ok": True, "liberado": False,
+                    "mensaje": "Observaciones enviadas. El alumno puede subir otra versión."})
 
 
 # ------------------------------------------------------ Constancia (RF-10, CU12)

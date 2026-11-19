@@ -27,10 +27,16 @@ function fechaCorta(iso) {
 // RF-09: el documento solo se puede subir dentro del periodo que define la oficina.
 function textoPeriodo(d) {
     // La carta de terminación tiene su propio flujo: Vinculación sube el Word,
-    // el alumno lo descarga, lo firma y sube el PDF.
+    // el alumno lo descarga, lo firma y sube el PDF; Vinculación lo valida.
     if (d.tipo === 'CARTA_TERMINACION') {
         if (d.firmada) {
-            return { texto: 'Carta firmada recibida. Servicio social liberado.', clase: 'abierto' };
+            return { texto: 'Carta validada por Vinculación. Servicio social LIBERADO.', clase: 'abierto' };
+        }
+        if (d.estatus === 'PENDIENTE' && d.documento_id) {
+            return { texto: 'Carta recibida. En revisión por el Jefe de Vinculación.', clase: 'abierto' };
+        }
+        if (d.estatus === 'OBSERVADO') {
+            return { texto: 'Vinculación observó tu carta. Corrige y sube otra versión.', clase: 'vencido' };
         }
         if (d.puede_subir) {
             return {
@@ -100,14 +106,19 @@ async function cargarDocumentos() {
             const tdAccion = document.createElement('td');
 
             if (d.tipo === 'CARTA_TERMINACION') {
-                // Primero se descarga el Word de Vinculación; luego se sube el PDF firmado.
+                // Primero se descarga el Word de Vinculación; luego se sube el
+                // PDF firmado, que queda pendiente hasta que Vinculación lo valide.
                 const nota = document.createElement('span');
                 nota.className = 'texto-bloqueado';
                 nota.textContent = d.firmada
-                    ? 'PDF firmado entregado'
-                    : d.puede_subir
-                        ? 'PDF firmado (máx. 5 MB)'
-                        : 'Se habilita al validar sus documentos';
+                    ? 'PDF validado por Vinculación'
+                    : d.estatus === 'PENDIENTE' && d.documento_id
+                        ? 'En revisión por el Jefe de Vinculación'
+                        : d.estatus === 'OBSERVADO'
+                            ? 'Corrige el documento y sube una nueva versión'
+                            : d.puede_subir
+                                ? 'PDF firmado (máx. 5 MB)'
+                                : 'Se habilita al validar sus documentos';
                 tdArchivo.appendChild(nota);
 
                 if (d.puede_descargar && d.carta_word_id) {
@@ -118,13 +129,15 @@ async function cargarDocumentos() {
                     tdAccion.appendChild(enlace);
                 }
 
-                if (d.firmada && d.documento_id) {
+                if (d.documento_id) {
                     const ver = document.createElement('a');
                     ver.className = 'btn-descargar';
                     ver.href = `/api/documentos/${d.documento_id}/archivo?descargar=1`;
-                    ver.textContent = 'Ver carta subida';
+                    ver.textContent = d.firmada ? 'Ver carta validada' : 'Ver carta subida';
                     tdAccion.appendChild(ver);
-                } else if (d.puede_subir) {
+                }
+
+                if (d.puede_subir) {
                     const entrada = document.createElement('input');
                     entrada.type = 'file';
                     entrada.accept = 'application/pdf,.pdf';
@@ -133,10 +146,11 @@ async function cargarDocumentos() {
                     const boton = document.createElement('button');
                     boton.type = 'button';
                     boton.className = 'btn-subir';
-                    boton.textContent = 'Subir carta firmada';
+                    boton.textContent = d.estatus === 'OBSERVADO'
+                        ? 'Subir nueva versión' : 'Subir carta firmada';
                     boton.addEventListener('click', () => subirArchivo(d, entrada, boton));
                     tdAccion.appendChild(boton);
-                } else {
+                } else if (!d.documento_id) {
                     const bloqueado = document.createElement('span');
                     bloqueado.className = 'texto-bloqueado';
                     bloqueado.textContent = 'No disponible';
@@ -200,7 +214,7 @@ async function subirArchivo(doc, entrada, boton) {
 
     const esCarta = doc.tipo === 'CARTA_TERMINACION';
     const pregunta = esCarta
-        ? '¿Subir la carta de terminación firmada? Su servicio social quedará LIBERADO.'
+        ? '¿Subir la carta de terminación firmada? Quedará pendiente hasta que el Jefe de Vinculación la valide.'
         : '¿Subir este documento?';
     if (!confirm(pregunta)) return;
 

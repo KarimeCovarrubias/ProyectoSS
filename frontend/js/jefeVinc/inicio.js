@@ -41,6 +41,7 @@ async function cargarResumen() {
         poner('stat-concluidos', datos.concluidos);
         poner('stat-pendientes', datos.cartas_pendientes);
         poner('stat-subidas', datos.cartas_subidas);
+        poner('stat-por-revisar', datos.por_revisar);
         llenarTabla('tabla-pendientes-body',
             datos.pendientes.map(p => [p.nombre, p.identificador, fechaSolo(p.fecha_fin)]),
             'No hay alumnos esperando su carta.');

@@ -460,15 +460,27 @@ def alumno_listar_documentos():
         carta = carta_terminacion(con, s["id"])                 # Word del Jefe
         habilitada = carta_terminacion_habilitada(con, s["id"])  # Word descargable
         firmada = carta_firmada_alumno(con, s["id"], uid)        # PDF del alumno
+        observacion = None
+        if firmada and firmada["estatus"] == "OBSERVADO":
+            o = con.execute("SELECT texto FROM observaciones WHERE documento_id = ? "
+                            "ORDER BY id DESC LIMIT 1", (firmada["id"],)).fetchone()
+            observacion = o["texto"] if o else None
+        if firmada:
+            estado_carta = firmada["estatus"]
+        elif habilitada:
+            estado_carta = "PENDIENTE"
+        else:
+            estado_carta = "SIN_SUBIR"
         resultado.append({
             "tipo": "CARTA_TERMINACION", "numero_reporte": 0,
-            "estatus": ("VALIDADO" if firmada
-                        else "PENDIENTE" if habilitada else "SIN_SUBIR"),
-            "observaciones": None,
+            "estatus": estado_carta,
+            "observaciones": observacion,
             "documento_id": firmada["id"] if firmada else None,
-            "version": None,
+            "version": firmada["version"] if firmada else None,
             "subido_en": carta["subido_en"] if carta else None,
-            "nombre_original": carta["nombre_original"] if carta else None,
+            "firmada_en": firmada["subido_en"] if firmada else None,
+            "nombre_original": (firmada["nombre_original"] if firmada
+                                else carta["nombre_original"] if carta else None),
             "fecha_inicio": None, "fecha_fin": None,
             "abierto": bool(habilitada),
             "motivo_bloqueo": None if habilitada else "DOCUMENTOS_PENDIENTES",
@@ -476,9 +488,12 @@ def alumno_listar_documentos():
             # Word editable que subió Vinculación (solo descarga).
             "carta_word_id": habilitada["id"] if habilitada else None,
             "puede_descargar": bool(habilitada),
-            # El alumno puede subir su PDF firmado cuando ya descargó el Word.
-            "puede_subir": bool(habilitada) and not firmada,
-            "firmada": bool(firmada),
+            # El alumno puede subir su PDF firmado cuando ya descargó el Word y
+            # aún no lo entrega o Vinculación lo observó para corregirlo.
+            "puede_subir": bool(habilitada) and (
+                not firmada or firmada["estatus"] == "OBSERVADO"),
+            "firmada": bool(firmada and firmada["estatus"] == "VALIDADO"),
+            "pendiente_validacion": bool(firmada and firmada["estatus"] == "PENDIENTE"),
             "documentos_pendientes": len(documentos_faltantes(con, s["id"])),
         })
     return jsonify(resultado)
@@ -537,8 +552,12 @@ def alumno_subir_documento():
             if not carta_terminacion(con, servicio_id):
                 return error("El Jefe de Vinculación aún no ha subido la carta en Word. "
                              "Intente de nuevo más tarde.", 409)
-            if carta_firmada_alumno(con, servicio_id, uid):
-                return error("Ya subió su carta de terminación firmada.", 409)
+            anterior = carta_firmada_alumno(con, servicio_id, uid)
+            if anterior and anterior["estatus"] == "VALIDADO":
+                return error("Su carta de terminación ya fue validada por Vinculación.", 409)
+            if anterior and anterior["estatus"] == "PENDIENTE":
+                return error("Su carta de terminación ya está en revisión por el Jefe "
+                             "de Vinculación.", 409)
         else:
             periodo = estado_periodo(con, tipo, numero_reporte)
             if not periodo["abierto"]:
@@ -570,20 +589,16 @@ def alumno_subir_documento():
                     "AND estatus <> 'REEMPLAZADO'",
                     (servicio_id, tipo, numero_reporte, uid))
         if tipo == "CARTA_TERMINACION":
-            # La carta firmada cierra el expediente: se registra como validada.
+            # La carta firmada queda pendiente hasta que el Jefe de Vinculación
+            # la revise. Solo al validarla el servicio social se libera.
             con.execute(
                 """INSERT INTO documentos (servicio_id, tipo, numero_reporte, version,
-                       estatus, nombre_original, ruta_archivo, tamano_bytes, subido_por,
-                       revisado_en)
-                   VALUES (?, ?, ?, ?, 'VALIDADO', ?, ?, ?, ?, datetime('now'))""",
+                       estatus, nombre_original, ruta_archivo, tamano_bytes, subido_por)
+                   VALUES (?, ?, ?, ?, 'PENDIENTE', ?, ?, ?, ?)""",
                 (servicio_id, tipo, numero_reporte, version, nombre_original,
                  relativa, tamano, uid))
-            con.execute(
-                "UPDATE servicios_sociales SET estatus = 'LIBERADO', "
-                "fecha_fin = COALESCE(fecha_fin, ?), actualizado_en = datetime('now') "
-                "WHERE id = ?", (date.today().isoformat(), servicio_id))
-            notificar(con, uid, "Su carta de terminación firmada fue recibida. "
-                                "Su servicio social quedó LIBERADO.")
+            notificar(con, uid, "Su carta de terminación firmada fue recibida y quedó "
+                                "pendiente de validación por el Jefe de Vinculación.")
         else:
             con.execute(
                 """INSERT INTO documentos (servicio_id, tipo, numero_reporte, version, estatus,
@@ -594,18 +609,24 @@ def alumno_subir_documento():
         nombre_doc = TITULOS.get(tipo, tipo).split(" (")[0]
         if tipo == "REPORTE_BIMESTRAL":
             nombre_doc = f"Reporte bimestral #{numero_reporte}"
-        notificar_rol(con, "JEFE_OFICINA_SS",
-                      f"El alumno {session.get('nombre', uid)} subió {nombre_doc} "
-                      f"(servicio {servicio_id}, versión {version}).")
-        notificar_rol(con, "JEFE_VINCULACION",
-                      f"El alumno {session.get('nombre', uid)} subió {nombre_doc} "
-                      f"(servicio {servicio_id}, versión {version}).")
+        if tipo == "CARTA_TERMINACION":
+            notificar_rol(con, "JEFE_VINCULACION",
+                          f"El alumno {session.get('nombre', uid)} subió su carta de "
+                          f"terminación firmada (servicio {servicio_id}, versión "
+                          f"{version}). Revísala para liberar su servicio social.")
+        else:
+            notificar_rol(con, "JEFE_OFICINA_SS",
+                          f"El alumno {session.get('nombre', uid)} subió {nombre_doc} "
+                          f"(servicio {servicio_id}, versión {version}).")
+            notificar_rol(con, "JEFE_VINCULACION",
+                          f"El alumno {session.get('nombre', uid)} subió {nombre_doc} "
+                          f"(servicio {servicio_id}, versión {version}).")
         registrar_bitacora(con, uid, "SUBIR_DOCUMENTO",
                            f"{tipo} #{numero_reporte} v{version} (servicio {servicio_id})")
     if tipo == "CARTA_TERMINACION":
-        return jsonify({"ok": True, "liberado": True,
-                        "mensaje": "Carta de terminación subida. Su servicio social "
-                                   "quedó LIBERADO."})
+        return jsonify({"ok": True, "pendiente": True,
+                        "mensaje": "Carta de terminación subida. Queda pendiente de "
+                                   "validación por el Jefe de Vinculación."})
     return jsonify({"ok": True, "mensaje": "Documento subido correctamente"})
 
 

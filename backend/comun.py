@@ -128,7 +128,7 @@ def carta_terminacion(con, servicio_id):
 def carta_firmada_alumno(con, servicio_id, alumno_id):
     """PDF firmado que subió el alumno después de descargar el Word de Vinculación."""
     return con.execute(
-        "SELECT id, nombre_original, ruta_archivo, estatus, subido_en "
+        "SELECT id, version, nombre_original, ruta_archivo, estatus, subido_en, revisado_en "
         "FROM documentos WHERE servicio_id = ? AND tipo = 'CARTA_TERMINACION' "
         "AND subido_por = ? AND estatus <> 'REEMPLAZADO' "
         "ORDER BY version DESC, id DESC LIMIT 1",

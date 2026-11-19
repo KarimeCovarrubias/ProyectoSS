@@ -357,6 +357,7 @@ body {
 
 /* ---------- Añadido: cartas de terminación ---------- */
 .estado-pendiente { background-color: #fef7e0; color: #b06000; }
+.estado-observado { background-color: #fce8e6; color: #c5221f; }
 
 .acciones {
     display: flex;
