@@ -11,6 +11,10 @@ TITULAR_SQL = "trim(e.titular_nombre || ' ' || e.titular_apellido_paterno || ' '
 ESTATUS_VIGENTE = ("PENDIENTE", "ACTIVO")
 ESTATUS_TERMINADO = ("CONCLUIDO", "LIBERADO")
 
+# RF-08: las horas se acumulan por reporte bimestral VALIDADO.
+HORAS_POR_REPORTE = 160
+REPORTES_BIMESTRALES = 3
+
 
 def nombre_completo(nombre, paterno, materno=""):
     return " ".join(p.strip() for p in (nombre, paterno, materno) if p and p.strip())
@@ -44,14 +48,31 @@ def servicio_activo(con, alumno_id):
         (alumno_id,)).fetchone()
 
 
-def horas_acumuladas(con, servicio_id):
-    fila = con.execute("SELECT COALESCE(SUM(horas), 0) FROM registro_horas WHERE servicio_id = ?",
-                       (servicio_id,)).fetchone()
+def reportes_validados(con, servicio_id):
+    """Cantidad de reportes bimestrales (1..3) que la Oficina ya validó."""
+    fila = con.execute(
+        "SELECT COUNT(DISTINCT numero_reporte) FROM documentos "
+        "WHERE servicio_id = ? AND tipo = 'REPORTE_BIMESTRAL' AND estatus = 'VALIDADO'",
+        (servicio_id,)).fetchone()
     return int(fila[0] or 0)
+
+
+def horas_acumuladas(con, servicio_id):
+    """RF-08: 160 horas por cada reporte bimestral validado.
+
+    Ya no se capturan horas a mano: el avance del alumno depende de que la
+    Oficina de Servicio Social valide el reporte bimestral correspondiente.
+    """
+    servicio = con.execute("SELECT horas_requeridas FROM servicios_sociales WHERE id = ?",
+                           (servicio_id,)).fetchone()
+    requeridas = int(servicio["horas_requeridas"] or 0) if servicio else 0
+    acumuladas = reportes_validados(con, servicio_id) * HORAS_POR_REPORTE
+    return min(acumuladas, requeridas) if requeridas else acumuladas
 
 
 def avance_horas(con, servicio):
     requeridas = int(servicio["horas_requeridas"] or 0)
+    reportes = reportes_validados(con, servicio["id"])
     acumuladas = horas_acumuladas(con, servicio["id"])
     porcentaje = round(min(100.0, acumuladas * 100.0 / requeridas), 2) if requeridas else 0.0
     return {
@@ -59,11 +80,21 @@ def avance_horas(con, servicio):
         "horas_acumuladas": acumuladas,
         "horas_restantes": max(0, requeridas - acumuladas),
         "porcentaje_avance": porcentaje,
+        # Detalle para el apartado del alumno: horas por reporte validado.
+        "horas_por_reporte": HORAS_POR_REPORTE,
+        "reportes_validados": reportes,
+        "reportes_requeridos": REPORTES_BIMESTRALES,
     }
 
 
-def documentos_requeridos(con, servicio_id, incluir_carta_terminacion=True):
-    """Lista de (tipo, numero_reporte) que debe entregar el alumno (CU07)."""
+def documentos_requeridos(con, servicio_id, incluir_carta_terminacion=False):
+    """Lista de (tipo, numero_reporte) que debe entregar el alumno (CU07).
+
+    La carta de terminación se maneja aparte: la sube el Jefe de Vinculación en
+    Word, el alumno la descarga, la firma y sube el PDF. No forma parte de los
+    documentos que la Oficina de Servicio Social valida, así que por defecto no
+    se incluye aquí.
+    """
     externo = con.execute(
         "SELECT 1 FROM servicios_sociales ss JOIN programas p ON ss.programa_id = p.id "
         "WHERE ss.id = ? AND p.origen = 'EXTERNA'", (servicio_id,)).fetchone() is not None
@@ -82,6 +113,51 @@ def documento_vigente(con, servicio_id, tipo, numero_reporte=0):
         "SELECT * FROM documentos WHERE servicio_id = ? AND tipo = ? AND numero_reporte = ? "
         "AND estatus <> 'REEMPLAZADO' ORDER BY version DESC, id DESC LIMIT 1",
         (servicio_id, tipo, numero_reporte)).fetchone()
+
+
+def carta_terminacion(con, servicio_id):
+    """Carta de terminación que subió el Jefe de Vinculación (la más reciente)."""
+    return con.execute(
+        "SELECT d.id, d.nombre_original, d.ruta_archivo, d.subido_en "
+        "FROM documentos d JOIN usuarios u ON u.id = d.subido_por "
+        "WHERE d.servicio_id = ? AND d.tipo = 'CARTA_TERMINACION' "
+        "AND d.estatus = 'VALIDADO' AND u.rol = 'JEFE_VINCULACION' "
+        "ORDER BY d.id DESC LIMIT 1", (servicio_id,)).fetchone()
+
+
+def carta_firmada_alumno(con, servicio_id, alumno_id):
+    """PDF firmado que subió el alumno después de descargar el Word de Vinculación."""
+    return con.execute(
+        "SELECT id, nombre_original, ruta_archivo, estatus, subido_en "
+        "FROM documentos WHERE servicio_id = ? AND tipo = 'CARTA_TERMINACION' "
+        "AND subido_por = ? AND estatus <> 'REEMPLAZADO' "
+        "ORDER BY version DESC, id DESC LIMIT 1",
+        (servicio_id, alumno_id)).fetchone()
+
+
+def listo_para_carta(con, servicio_id):
+    """El expediente ya está completo: horas cubiertas y documentos validados.
+
+    No importa si el servicio sigue en PENDIENTE: lo que cuenta es que el alumno
+    ya entregó y la Oficina validó todo lo que le corresponde (hasta la memoria
+    final). Entonces Vinculación puede subir la carta de terminación.
+    """
+    servicio = con.execute(
+        "SELECT estatus, horas_requeridas FROM servicios_sociales WHERE id = ?",
+        (servicio_id,)).fetchone()
+    if not servicio or servicio["estatus"] == "BAJA":
+        return False
+    if horas_acumuladas(con, servicio_id) < int(servicio["horas_requeridas"] or 0):
+        return False
+    return not documentos_faltantes(con, servicio_id)
+
+
+def carta_terminacion_habilitada(con, servicio_id):
+    """La carta solo se puede descargar cuando el expediente del alumno ya está
+    completo y validado (y Vinculación ya subió la carta en Word)."""
+    if not listo_para_carta(con, servicio_id):
+        return None
+    return carta_terminacion(con, servicio_id)
 
 
 def periodo_entrega(con, tipo, numero_reporte=0):
@@ -126,20 +202,23 @@ def documentos_faltantes(con, servicio_id):
 
 
 def quizas_concluir(con, servicio_id):
-    """Pasa a CONCLUIDO cuando ya están las horas y todos los documentos validados."""
+    """Pasa a CONCLUIDO cuando ya están las horas y todos los documentos validados.
+
+    También aplica si el servicio seguía en PENDIENTE (la Oficina validó todo el
+    expediente sin haber cambiado el estatus antes): lo importante es que el
+    alumno ya cumplió, no el estado administrativo previo.
+    """
     servicio = con.execute("SELECT * FROM servicios_sociales WHERE id = ?",
                            (servicio_id,)).fetchone()
-    if not servicio or servicio["estatus"] != "ACTIVO":
+    if not servicio or servicio["estatus"] not in ("PENDIENTE", "ACTIVO"):
         return False
-    if horas_acumuladas(con, servicio_id) < servicio["horas_requeridas"]:
-        return False
-    if documentos_faltantes(con, servicio_id):
+    if not listo_para_carta(con, servicio_id):
         return False
     con.execute("UPDATE servicios_sociales SET estatus = 'CONCLUIDO', "
                 "actualizado_en = datetime('now') WHERE id = ?", (servicio_id,))
     notificar(con, servicio["alumno_id"],
               "Su servicio social concluyó: horas completas y documentos validados. "
-              "El Jefe de Vinculación puede emitir su constancia.")
+              "El Jefe de Vinculación ya puede subir su carta de terminación en Word.")
     return True
 
 

@@ -200,6 +200,26 @@ body {
     border-radius: 4px;
 }
 
+.badge-concluido {
+    display: inline-block;
+    background-color: #e8f0fe;
+    color: #1a73e8;
+    font-size: 13px;
+    font-weight: bold;
+    padding: 4px 10px;
+    border-radius: 4px;
+}
+
+.badge-liberado {
+    display: inline-block;
+    background-color: #ceead6;
+    color: #0d652d;
+    font-size: 13px;
+    font-weight: bold;
+    padding: 4px 10px;
+    border-radius: 4px;
+}
+
 /* Derecha: Programa Seleccionado */
 .info-derecha {
     flex: 1;
@@ -231,6 +251,56 @@ body {
     color: var(--tec-dark);
     padding-top: 10px;
     border-top: 1px solid var(--tec-border);
+}
+
+/* --- Avance de horas (RF-08) --- */
+.card-horas {
+    background-color: var(--tec-white);
+    border: 1px solid var(--tec-border);
+    border-radius: 10px;
+    padding: 25px 35px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    max-width: 1050px;
+    margin-top: 25px;
+}
+
+.section-subtitle {
+    font-size: 20px;
+    color: var(--tec-blue);
+    margin-bottom: 15px;
+}
+
+.horas-resumen {
+    font-size: 16px;
+    color: var(--tec-dark);
+    margin-bottom: 10px;
+}
+
+.horas-resumen strong {
+    color: var(--tec-blue);
+    font-size: 20px;
+}
+
+.barra-progreso {
+    width: 100%;
+    height: 14px;
+    background-color: var(--tec-light);
+    border: 1px solid var(--tec-border);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.barra-progreso-valor {
+    height: 100%;
+    width: 0;
+    background-color: #137333;
+    transition: width 0.3s ease;
+}
+
+.horas-detalle {
+    margin-top: 10px;
+    font-size: 13px;
+    color: #555555;
 }
 
 /* --- Responsivo para pantallas chicas --- */

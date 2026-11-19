@@ -13,10 +13,15 @@ async function cargarEstadoCarga() {
             document.getElementById('seccion-cargada').style.display = 'block';
             document.getElementById('cargada-nombre').textContent = datos.servicio.programa_nombre;
             document.getElementById('cargada-dep').textContent =
-                `Dependencia: ${datos.servicio.empresa_nombre} | Horas: ${datos.servicio.horas_requeridas}`;
+                `Dependencia: ${datos.servicio.empresa_nombre} | Horas: `
+                + `${datos.servicio.horas_acumuladas} de ${datos.servicio.horas_requeridas}`
+                + ` (${datos.servicio.reportes_validados} de `
+                + `${datos.servicio.reportes_requeridos} reportes validados)`;
             document.getElementById('cargada-estatus').textContent = datos.servicio.estatus;
             document.getElementById('seccion-disponibles').style.display = 'none';
-            mensaje.textContent = 'Ya cuenta con un servicio social registrado.';
+            mensaje.textContent = datos.servicio.estatus === 'LIBERADO'
+                ? 'Su servicio social ya fue LIBERADO. No requiere cargar otro programa.'
+                : 'Ya cuenta con un servicio social registrado.';
             return;
         }
         if (datos.bloqueo) {                       // curso de inducción, plan/créditos pendientes...

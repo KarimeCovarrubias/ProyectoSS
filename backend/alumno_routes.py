@@ -11,9 +11,11 @@ from flask import Blueprint, jsonify, request, send_file, session
 from werkzeug.utils import secure_filename
 
 from backend.comun import (
-    NOMBRE_SQL, TITULAR_SQL, avance_horas, documento_vigente, documentos_requeridos,
-    estado_periodo, horas_acumuladas, liberar_cupo, nombre_completo, notificar,
-    notificar_rol, servicio_activo, servicio_del_alumno,
+    NOMBRE_SQL, TITULAR_SQL, avance_horas, carta_firmada_alumno,
+    carta_terminacion, carta_terminacion_habilitada, documento_vigente,
+    documentos_faltantes, documentos_requeridos, estado_periodo, horas_acumuladas,
+    liberar_cupo, listo_para_carta, nombre_completo, notificar, notificar_rol,
+    servicio_activo, servicio_del_alumno,
 )
 from backend.db import registrar_bitacora, transaccion
 from backend.documentos_word import TITULOS, generar_docx
@@ -75,6 +77,10 @@ def _bloqueo_solicitud(con, uid):
         return f"Necesita al menos {MIN_PORCENTAJE_CREDITOS} % de créditos para solicitar el servicio."
     if servicio_activo(con, uid):
         return "Ya cuenta con un servicio social activo o pendiente."
+    if con.execute("SELECT 1 FROM servicios_sociales WHERE alumno_id = ? "
+                   "AND estatus IN ('CONCLUIDO','LIBERADO')", (uid,)).fetchone():
+        return ("Ya concluyó su servicio social. No puede cargar otro programa ni "
+                "registrar propuestas propias.")
     return None
 
 
@@ -207,7 +213,12 @@ def alumno_actualizar_perfil():
 @login_requerido("ALUMNO")
 def listar_banco_general():
     """Banco de propuestas: las del banco disponibles y las propuestas propias aprobadas."""
+    uid = session["usuario_id"]
     with transaccion() as con:
+        actual = _servicio_actual(con, uid)
+        if actual and actual["estatus"] in ("CONCLUIDO", "LIBERADO"):
+            return error("Ya concluyó su servicio social; el banco de propuestas ya no "
+                         "está disponible.", 409)
         filas = con.execute(
             f"""SELECT p.id, p.tipo, p.origen, p.nombre, p.actividades, p.periodo,
                        p.horas, p.cupo, p.cupo_disponible, p.plan_estudios,
@@ -442,6 +453,34 @@ def alumno_listar_documentos():
                 # La plantilla se puede descargar siempre, sin importar la fecha.
                 "plantilla": tipo in plantillas,
             })
+
+        # La carta de terminación la sube el Jefe de Vinculación en Word (editable);
+        # el alumno la descarga, la firma y sube el PDF. Se habilita cuando el
+        # expediente ya está validado (todos los documentos y las horas).
+        carta = carta_terminacion(con, s["id"])                 # Word del Jefe
+        habilitada = carta_terminacion_habilitada(con, s["id"])  # Word descargable
+        firmada = carta_firmada_alumno(con, s["id"], uid)        # PDF del alumno
+        resultado.append({
+            "tipo": "CARTA_TERMINACION", "numero_reporte": 0,
+            "estatus": ("VALIDADO" if firmada
+                        else "PENDIENTE" if habilitada else "SIN_SUBIR"),
+            "observaciones": None,
+            "documento_id": firmada["id"] if firmada else None,
+            "version": None,
+            "subido_en": carta["subido_en"] if carta else None,
+            "nombre_original": carta["nombre_original"] if carta else None,
+            "fecha_inicio": None, "fecha_fin": None,
+            "abierto": bool(habilitada),
+            "motivo_bloqueo": None if habilitada else "DOCUMENTOS_PENDIENTES",
+            "plantilla": False,
+            # Word editable que subió Vinculación (solo descarga).
+            "carta_word_id": habilitada["id"] if habilitada else None,
+            "puede_descargar": bool(habilitada),
+            # El alumno puede subir su PDF firmado cuando ya descargó el Word.
+            "puede_subir": bool(habilitada) and not firmada,
+            "firmada": bool(firmada),
+            "documentos_pendientes": len(documentos_faltantes(con, s["id"])),
+        })
     return jsonify(resultado)
 
 
@@ -487,26 +526,36 @@ def alumno_subir_documento():
             (s["programa_id"],)).fetchone() is not None
         if tipo == "CARTA_PRESENTACION" and not externo:
             return error("La carta de presentación solo se requiere en servicios externos", 400)
-        if tipo == "CARTA_TERMINACION" and horas_acumuladas(con, servicio_id) < s["horas_requeridas"]:
-            return error("La carta de terminación se sube al completar las horas del servicio", 409)
 
         # RF-09: cada documento solo se puede subir dentro de su periodo global.
-        periodo = estado_periodo(con, tipo, numero_reporte)
-        if not periodo["abierto"]:
-            nombre_doc = _nombre_documento(tipo, numero_reporte)
-            if periodo["motivo"] == "SIN_PERIODO":
-                return error(f"La Oficina de Servicio Social todavía no ha definido el periodo "
-                             f"para subir {nombre_doc}", 409)
-            if periodo["motivo"] == "NO_INICIADO":
-                return error(f"El periodo para subir {nombre_doc} inicia el "
-                             f"{_fecha_larga(periodo['fecha_inicio'])}", 409)
-            return error(f"El periodo para subir {nombre_doc} venció el "
-                         f"{_fecha_larga(periodo['fecha_fin'])}. Solicite a la Oficina de "
-                         f"Servicio Social que lo reabra", 409)
+        # La carta de terminación es la excepción: se rige por la validación del
+        # expediente y por la carta en Word que subió Vinculación.
+        if tipo == "CARTA_TERMINACION":
+            if not listo_para_carta(con, servicio_id):
+                return error("La carta de terminación se habilita cuando todos sus "
+                             "documentos estén validados y sus horas completas.", 409)
+            if not carta_terminacion(con, servicio_id):
+                return error("El Jefe de Vinculación aún no ha subido la carta en Word. "
+                             "Intente de nuevo más tarde.", 409)
+            if carta_firmada_alumno(con, servicio_id, uid):
+                return error("Ya subió su carta de terminación firmada.", 409)
+        else:
+            periodo = estado_periodo(con, tipo, numero_reporte)
+            if not periodo["abierto"]:
+                nombre_doc = _nombre_documento(tipo, numero_reporte)
+                if periodo["motivo"] == "SIN_PERIODO":
+                    return error(f"La Oficina de Servicio Social todavía no ha definido el "
+                                 f"periodo para subir {nombre_doc}", 409)
+                if periodo["motivo"] == "NO_INICIADO":
+                    return error(f"El periodo para subir {nombre_doc} inicia el "
+                                 f"{_fecha_larga(periodo['fecha_inicio'])}", 409)
+                return error(f"El periodo para subir {nombre_doc} venció el "
+                             f"{_fecha_larga(periodo['fecha_fin'])}. Solicite a la Oficina de "
+                             f"Servicio Social que lo reabra", 409)
 
-        actual = documento_vigente(con, servicio_id, tipo, numero_reporte)
-        if actual and actual["estatus"] == "VALIDADO":
-            return error("Este documento ya fue validado", 409)
+            actual = documento_vigente(con, servicio_id, tipo, numero_reporte)
+            if actual and actual["estatus"] == "VALIDADO":
+                return error("Este documento ya fue validado", 409)
 
         version = (con.execute(
             "SELECT COALESCE(MAX(version), 0) FROM documentos "
@@ -514,15 +563,34 @@ def alumno_subir_documento():
             (servicio_id, tipo, numero_reporte)).fetchone()[0] or 0) + 1
         guardado, relativa = archivos.guardar(archivo, f"alumnos/{uid}")
 
+        # Solo se reemplazan las versiones del propio alumno: el Word que subió
+        # Vinculación se conserva para que el alumno lo pueda volver a descargar.
         con.execute("UPDATE documentos SET estatus = 'REEMPLAZADO' WHERE servicio_id = ? "
-                    "AND tipo = ? AND numero_reporte = ? AND estatus <> 'REEMPLAZADO'",
-                    (servicio_id, tipo, numero_reporte))
-        con.execute(
-            """INSERT INTO documentos (servicio_id, tipo, numero_reporte, version, estatus,
-                   nombre_original, ruta_archivo, tamano_bytes, subido_por)
-               VALUES (?, ?, ?, ?, 'PENDIENTE', ?, ?, ?, ?)""",
-            (servicio_id, tipo, numero_reporte, version, nombre_original,
-             relativa, tamano, uid))
+                    "AND tipo = ? AND numero_reporte = ? AND subido_por = ? "
+                    "AND estatus <> 'REEMPLAZADO'",
+                    (servicio_id, tipo, numero_reporte, uid))
+        if tipo == "CARTA_TERMINACION":
+            # La carta firmada cierra el expediente: se registra como validada.
+            con.execute(
+                """INSERT INTO documentos (servicio_id, tipo, numero_reporte, version,
+                       estatus, nombre_original, ruta_archivo, tamano_bytes, subido_por,
+                       revisado_en)
+                   VALUES (?, ?, ?, ?, 'VALIDADO', ?, ?, ?, ?, datetime('now'))""",
+                (servicio_id, tipo, numero_reporte, version, nombre_original,
+                 relativa, tamano, uid))
+            con.execute(
+                "UPDATE servicios_sociales SET estatus = 'LIBERADO', "
+                "fecha_fin = COALESCE(fecha_fin, ?), actualizado_en = datetime('now') "
+                "WHERE id = ?", (date.today().isoformat(), servicio_id))
+            notificar(con, uid, "Su carta de terminación firmada fue recibida. "
+                                "Su servicio social quedó LIBERADO.")
+        else:
+            con.execute(
+                """INSERT INTO documentos (servicio_id, tipo, numero_reporte, version, estatus,
+                       nombre_original, ruta_archivo, tamano_bytes, subido_por)
+                   VALUES (?, ?, ?, ?, 'PENDIENTE', ?, ?, ?, ?)""",
+                (servicio_id, tipo, numero_reporte, version, nombre_original,
+                 relativa, tamano, uid))
         nombre_doc = TITULOS.get(tipo, tipo).split(" (")[0]
         if tipo == "REPORTE_BIMESTRAL":
             nombre_doc = f"Reporte bimestral #{numero_reporte}"
@@ -534,6 +602,10 @@ def alumno_subir_documento():
                       f"(servicio {servicio_id}, versión {version}).")
         registrar_bitacora(con, uid, "SUBIR_DOCUMENTO",
                            f"{tipo} #{numero_reporte} v{version} (servicio {servicio_id})")
+    if tipo == "CARTA_TERMINACION":
+        return jsonify({"ok": True, "liberado": True,
+                        "mensaje": "Carta de terminación subida. Su servicio social "
+                                   "quedó LIBERADO."})
     return jsonify({"ok": True, "mensaje": "Documento subido correctamente"})
 
 
@@ -550,6 +622,9 @@ def alumno_descargar_plantilla(tipo):
     tipo = tipo.upper()
     if tipo not in TIPOS_DOCUMENTO:
         return error("Tipo de documento no válido", 400)
+    if tipo == "CARTA_TERMINACION":
+        return error("La carta de terminación la sube el Jefe de Vinculación; "
+                     "descárguela desde la sección de documentos.", 403)
     try:
         numero_reporte = int(request.args.get("numero_reporte", 0))
     except (TypeError, ValueError):
@@ -597,6 +672,9 @@ def alumno_formato_word(tipo):
     tipo = tipo.upper()
     if tipo not in TITULOS or tipo == "CONSTANCIA":
         return error("Tipo de documento no válido", 400)
+    if tipo == "CARTA_TERMINACION":
+        return error("La carta de terminación la emite el Jefe de Vinculación en Word; "
+                     "usted solo puede descargarla.", 403)
     try:
         numero_reporte = int(request.args.get("numero_reporte", 0))
     except ValueError:
@@ -608,10 +686,6 @@ def alumno_formato_word(tipo):
         s = _servicio_actual(con, uid)
         if not s:
             return error("Debe tener un programa de servicio social seleccionado", 409)
-        if tipo == "CARTA_TERMINACION" and s["estatus"] not in ("CONCLUIDO", "LIBERADO"):
-            if horas_acumuladas(con, s["id"]) < s["horas_requeridas"]:
-                return error("La carta de terminación está disponible al completar las horas "
-                             "del servicio social", 409)
         if tipo == "REPORTE_BIMESTRAL" and numero_reporte not in (1, 2, 3):
             return error("Indique el número de reporte (1 a 3)", 400)
         datos = _datos_docx(con, alumno, s, tipo, numero_reporte)

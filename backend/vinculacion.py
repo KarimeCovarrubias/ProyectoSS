@@ -1,6 +1,7 @@
 """Rutas del Jefe del Departamento de Vinculación.
 
-- Sube la carta de terminación FIRMADA de los alumnos que concluyeron su servicio.
+- Sube la carta de terminación en Word (.docx) para que el alumno la descargue,
+  la firme y entregue el PDF. Al recibirla, el servicio queda LIBERADO.
 - Genera e imprime la constancia de terminación con folio único (RF-10, CU12).
 """
 from __future__ import annotations
@@ -12,17 +13,19 @@ from pathlib import Path
 
 from flask import Blueprint, jsonify, request, send_file, session
 
-from backend.comun import NOMBRE_SQL, documentos_faltantes, horas_acumuladas, notificar
+from backend.comun import (
+    NOMBRE_SQL, documentos_faltantes, horas_acumuladas, listo_para_carta, notificar,
+)
 from backend.db import conectar, registrar_bitacora, transaccion
 from backend.documentos_word import generar_docx
 from backend.rutas import archivos
 from backend.seguridad import error, login_requerido
-from backend import validaciones as v
 
 bp = Blueprint("vinculacion", __name__, url_prefix="/api/vinculacion")
 solo_vinculacion = login_requerido("JEFE_VINCULACION")
 
 POR_PAGINA = 15
+MAX_BYTES_CARTA = 5 * 1024 * 1024   # 5 MB
 
 # La carta "vigente" para Vinculación es la que subió y validó el propio Jefe de
 # Vinculación (no la propuesta que el alumno generó y el Jefe de SS validó).
@@ -41,14 +44,17 @@ def _escapar_like(texto):
 @solo_vinculacion
 def resumen():
     with closing(conectar()) as con:
-        concluidos, subidas = con.execute(
-            "SELECT COUNT(*), COUNT(d.id) FROM servicios_sociales s "
-            f"{UNION_CARTA} WHERE s.estatus = 'CONCLUIDO'").fetchone()
-        pendientes = [dict(f) for f in con.execute(
-            f"SELECT s.id AS servicio_id, {NOMBRE_SQL} AS nombre, u.identificador, s.fecha_fin "
+        filas = con.execute(
+            f"SELECT s.id AS servicio_id, s.fecha_fin, {NOMBRE_SQL} AS nombre, "
+            "       u.identificador, d.id AS documento_id, d.subido_en "
             "FROM servicios_sociales s JOIN usuarios u ON u.id = s.alumno_id "
-            f"{UNION_CARTA} WHERE s.estatus = 'CONCLUIDO' AND d.id IS NULL "
-            "ORDER BY s.fecha_fin, s.id LIMIT 5")]
+            f"{UNION_CARTA} WHERE s.estatus <> 'BAJA' "
+            "ORDER BY s.fecha_fin, s.id").fetchall()
+        # Un alumno está listo cuando ya entregó y validó todo su expediente,
+        # aunque el servicio siga en PENDIENTE (no depende del estatus previo).
+        listos = [f for f in filas if listo_para_carta(con, f["servicio_id"])]
+        subidas = [f for f in listos if f["documento_id"]]
+        pendientes = [dict(f) for f in listos if not f["documento_id"]][:5]
         recientes = [dict(f) for f in con.execute(
             f"SELECT {NOMBRE_SQL} AS nombre, u.identificador, d.subido_en "
             "FROM documentos d JOIN servicios_sociales s ON s.id = d.servicio_id "
@@ -58,8 +64,8 @@ def resumen():
             "                     WHERE v.rol = 'JEFE_VINCULACION') "
             "ORDER BY d.id DESC LIMIT 5")]
         constancias = con.execute("SELECT COUNT(*) FROM constancias").fetchone()[0]
-    return jsonify({"concluidos": concluidos, "cartas_subidas": subidas,
-                    "cartas_pendientes": concluidos - subidas,
+    return jsonify({"concluidos": len(listos), "cartas_subidas": len(subidas),
+                    "cartas_pendientes": len(listos) - len(subidas),
                     "constancias_emitidas": constancias,
                     "pendientes": pendientes, "recientes": recientes})
 
@@ -77,15 +83,11 @@ def listar_servicios():
     except ValueError:
         pagina = 1
 
-    condiciones, parametros = ["s.estatus = 'CONCLUIDO'"], []
+    condiciones, parametros = ["s.estatus <> 'BAJA'"], []
     if q:
         patron = f"%{_escapar_like(q)}%"
         condiciones.append(f"({NOMBRE_SQL} LIKE ? ESCAPE '\\' OR u.identificador LIKE ? ESCAPE '\\')")
         parametros += [patron, patron]
-    if estado == "pendientes":
-        condiciones.append("d.id IS NULL")
-    elif estado == "subidas":
-        condiciones.append("d.id IS NOT NULL")
     donde = "WHERE " + " AND ".join(condiciones)
     desde = ("FROM servicios_sociales s "
              "JOIN usuarios u ON u.id = s.alumno_id "
@@ -94,17 +96,30 @@ def listar_servicios():
              f"{UNION_CARTA}")
 
     with closing(conectar()) as con:
-        total = con.execute(f"SELECT COUNT(*) {desde} {donde}", parametros).fetchone()[0]
-        paginas = max(-(-total // POR_PAGINA), 1)
-        pagina = min(pagina, paginas)
         filas = con.execute(
             f"SELECT s.id AS servicio_id, {NOMBRE_SQL} AS nombre, u.identificador, a.carrera, "
             "       p.nombre AS programa, s.fecha_fin, "
             "       d.id AS documento_id, d.version, d.subido_en, d.nombre_original "
-            f"{desde} {donde} "
-            "ORDER BY (d.id IS NOT NULL), s.fecha_fin, s.id LIMIT ? OFFSET ?",
-            parametros + [POR_PAGINA, (pagina - 1) * POR_PAGINA]).fetchall()
-    return jsonify({"servicios": [dict(f) for f in filas],
+            f"{desde} {donde} ORDER BY s.fecha_fin, s.id", parametros).fetchall()
+        # Solo los alumnos cuyo expediente ya está completo (documentos validados
+        # y horas cubiertas). No exigimos estatus CONCLUIDO: la Oficina pudo
+        # validar todo sin haber cambiado el estatus del servicio.
+        servicios = []
+        for fila in filas:
+            if not listo_para_carta(con, fila["servicio_id"]):
+                continue
+            if estado == "pendientes" and fila["documento_id"]:
+                continue
+            if estado == "subidas" and not fila["documento_id"]:
+                continue
+            servicios.append(dict(fila))
+
+        total = len(servicios)
+        paginas = max(-(-total // POR_PAGINA), 1)
+        pagina = min(pagina, paginas)
+        inicio = (pagina - 1) * POR_PAGINA
+        pagina_servicios = servicios[inicio:inicio + POR_PAGINA]
+    return jsonify({"servicios": pagina_servicios,
                     "total": total, "pagina": pagina, "paginas": paginas})
 
 
@@ -112,15 +127,24 @@ def listar_servicios():
 @bp.post("/servicios/<int:servicio_id>/carta")
 @solo_vinculacion
 def subir_carta(servicio_id):
-    """Sube (o reemplaza) la carta de terminación firmada. Solo PDF, máx. 5 MB."""
+    """Sube (o reemplaza) la carta de terminación editable en Word (.docx).
+
+    El alumno la descarga, la firma y sube el PDF; al recibirlo, su servicio
+    queda LIBERADO. Solo se permite cuando el expediente ya está validado.
+    """
     archivo = request.files.get("archivo")
     if not archivo or not archivo.filename:
-        return error("Seleccione el archivo PDF de la carta de terminación firmada")
-    problema = v.validar_pdf(archivo.filename, archivos.tamano(archivo))
-    if not problema and not archivos.es_pdf(archivo):
-        problema = "Archivo no válido: el archivo no es un PDF"
-    if problema:
-        return error(problema)
+        return error("Seleccione el archivo Word (.docx) de la carta de terminación")
+
+    nombre_original = Path(archivo.filename).name[:150] or "carta_terminacion.docx"
+    if not nombre_original.lower().endswith(".docx"):
+        return error("Archivo no válido: la carta debe ser un documento Word (.docx)")
+    tamano = archivos.tamano(archivo)
+    if tamano <= 0 or tamano > MAX_BYTES_CARTA:
+        return error("Archivo no válido: está vacío o excede 5 MB")
+    if archivo.stream.read(4) != b"PK\x03\x04":   # un .docx es un zip
+        return error("Archivo no válido: no es un documento de Word (.docx)")
+    archivo.stream.seek(0)
 
     guardado = None
     try:
@@ -132,33 +156,37 @@ def subir_carta(servicio_id):
                 (servicio_id,)).fetchone()
             if servicio is None:
                 return error("El servicio social no existe", 404)
-            if servicio["estatus"] != "CONCLUIDO":
-                return error("Solo se puede subir la carta de un servicio concluido", 409)
+            if not listo_para_carta(con, servicio_id):
+                return error("La carta se habilita cuando el alumno tenga todos sus "
+                             "documentos validados y sus horas completas.", 409)
 
             version = con.execute(
                 "SELECT COALESCE(MAX(version), 0) FROM documentos "
                 "WHERE servicio_id = ? AND tipo = 'CARTA_TERMINACION'",
                 (servicio_id,)).fetchone()[0] + 1
-            guardado, relativa = archivos.guardar(archivo, "cartas")
+            guardado, relativa = archivos.guardar(archivo, "cartas", ".docx")
             con.execute(
                 "UPDATE documentos SET estatus = 'REEMPLAZADO' "
                 "WHERE servicio_id = ? AND tipo = 'CARTA_TERMINACION' "
-                "AND estatus <> 'REEMPLAZADO'", (servicio_id,))
+                "AND subido_por = ? AND estatus <> 'REEMPLAZADO'",
+                (servicio_id, session["usuario_id"]))
             con.execute(
                 "INSERT INTO documentos (servicio_id, tipo, numero_reporte, version, estatus, "
                 "nombre_original, ruta_archivo, tamano_bytes, subido_por, revisado_por, "
                 "revisado_en) VALUES (?, 'CARTA_TERMINACION', 0, ?, 'VALIDADO', ?, ?, ?, ?, ?, "
                 "datetime('now'))",
-                (servicio_id, version, Path(archivo.filename).name[:150], relativa,
+                (servicio_id, version, nombre_original, relativa,
                  guardado.stat().st_size, session["usuario_id"], session["usuario_id"]))
             nombre_alumno = " ".join(p for p in (servicio["nombre"], servicio["apellido_paterno"],
                                                  servicio["apellido_materno"]) if p)
             con.execute(
                 "INSERT INTO notificaciones (usuario_id, mensaje) VALUES (?, ?)",
                 (servicio["alumno_id"],
-                 "Tu carta de terminación ya está disponible para descargar."
+                 "Tu carta de terminación ya está disponible para descargar en Word. "
+                 "Descárgala, fírmala y súbela en PDF para liberar tu servicio social."
                  if version == 1 else
-                 "Se actualizó tu carta de terminación. Ya puedes descargar la nueva versión."))
+                 "Se actualizó tu carta de terminación. Descarga la nueva versión en Word, "
+                 "fírmala y súbela en PDF."))
             registrar_bitacora(con, session["usuario_id"], "SUBIR_CARTA_TERMINACION",
                                f"{nombre_alumno} (servicio {servicio_id}), versión {version}")
     except Exception:
@@ -203,6 +231,15 @@ def _siguiente_folio(con):
         consecutivo += 1
 
 
+def _carta_firmada_por_alumno(con, servicio_id):
+    """PDF firmado que el alumno subió después de descargar el Word de Vinculación."""
+    return con.execute(
+        "SELECT 1 FROM documentos d JOIN usuarios u ON u.id = d.subido_por "
+        "WHERE d.servicio_id = ? AND d.tipo = 'CARTA_TERMINACION' "
+        "AND d.estatus = 'VALIDADO' AND u.rol = 'ALUMNO'",
+        (servicio_id,)).fetchone()
+
+
 @bp.get("/servicios/<int:servicio_id>/constancia")
 @solo_vinculacion
 def revisar_constancia(servicio_id):
@@ -227,6 +264,9 @@ def revisar_constancia(servicio_id):
         if not firmada:
             faltantes.append({"tipo": "CARTA_TERMINACION",
                               "numero_reporte": 0, "estatus": "SIN_FIRMA"})
+        if not _carta_firmada_por_alumno(con, servicio_id):
+            faltantes.append({"tipo": "CARTA_TERMINACION",
+                              "numero_reporte": 0, "estatus": "SIN_FIRMA_ALUMNO"})
         if horas_acumuladas(con, servicio_id) < s["horas_requeridas"]:
             faltantes.append({"tipo": "HORAS", "numero_reporte": 0,
                               "estatus": "INCOMPLETAS"})
@@ -264,6 +304,8 @@ def emitir_constancia(servicio_id):
                 (servicio_id,)).fetchone()
             if not firmada:
                 return error("Falta subir la carta de terminación firmada por Vinculación", 409)
+            if not _carta_firmada_por_alumno(con, servicio_id):
+                return error("Falta que el alumno suba su carta de terminación firmada en PDF", 409)
             if horas_acumuladas(con, servicio_id) < s["horas_requeridas"]:
                 return error("No se puede emitir: las horas del servicio están incompletas", 409)
             faltantes = documentos_faltantes(con, servicio_id)

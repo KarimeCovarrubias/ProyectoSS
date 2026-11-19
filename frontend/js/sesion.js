@@ -77,7 +77,32 @@ async function requerirSesion(rolEsperado, permitirCambioPendiente = false) {
         irAInicio(datos.usuario.rol);       // entró a una página que no es de su rol
         return null;
     }
+    // Si el alumno ya liberó su servicio, se ocultan Carga / BP / PP y no se
+    // permite entrar a esas páginas (el servidor también lo impide).
+    if (datos.usuario.rol === 'ALUMNO' && !(await ajustarMenuAlumno())) return null;
     return { ...datos.usuario, debe_cambiar_password: datos.debe_cambiar_password };
+}
+
+// Quita del menú del alumno las opciones que dejan de tener sentido cuando su
+// servicio social ya quedó LIBERADO. Devuelve false si hay que redirigirlo.
+async function ajustarMenuAlumno() {
+    try {
+        const perfil = await api('/api/alumno/perfil');
+        if (!perfil.servicio || perfil.servicio.estatus !== 'LIBERADO') return true;
+        const paginas = new Set(['carga.html', 'bp.html', 'pp.html']);
+        const actual = location.pathname.split('/').pop() || 'inicio.html';
+        document.querySelectorAll('.menu .menu-item').forEach((enlace) => {
+            const destino = (enlace.getAttribute('href') || '').split('/').pop();
+            if (paginas.has(destino)) enlace.remove();
+        });
+        if (paginas.has(actual)) {
+            window.location.replace('inicio.html');
+            return false;
+        }
+        return true;
+    } catch (e) {
+        return true;        // si falla la consulta, no se bloquea la página
+    }
 }
 
 async function cerrarSesion() {

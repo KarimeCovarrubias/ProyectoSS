@@ -15,8 +15,8 @@ from pathlib import Path
 from flask import Blueprint, jsonify, request, send_file, session
 
 from backend.comun import (
-    NOMBRE_SQL, avance_horas, documentos_faltantes, horas_acumuladas,
-    liberar_cupo, notificar, notificar_rol, quizas_concluir,
+    HORAS_POR_REPORTE, NOMBRE_SQL, avance_horas, documentos_faltantes,
+    horas_acumuladas, liberar_cupo, notificar, notificar_rol, quizas_concluir,
 )
 from backend.db import conectar, registrar_bitacora, transaccion
 from backend.rutas import archivos
@@ -39,8 +39,9 @@ TIPOS_PLANTILLA = {
     "CARTA_ACEPTACION": "Carta de aceptación",
     "REPORTE_BIMESTRAL": "Reporte bimestral (sirve para los 3 reportes)",
     "MEMORIA_FINAL": "Memoria final",
-    "CARTA_TERMINACION": "Carta de terminación",
 }
+# La carta de terminación NO la habilita ni la sube la Oficina de Servicio
+# Social: la sube el Jefe de Vinculación en Word y es solo de descarga.
 
 COLUMNAS_PROGRAMA = """p.id, p.tipo, p.origen, p.nombre, p.area_responsable, p.objetivo,
        p.actividades, p.horas, p.cupo, p.cupo_disponible, p.periodo, p.plan_estudios,
@@ -592,8 +593,12 @@ def jefe_ver_documento(documento_id):
     ruta = archivos.ruta_segura(fila["ruta_archivo"]) if fila else None
     if not ruta or not ruta.is_file():
         return error("Documento no encontrado", 404)
-    return send_file(ruta, mimetype="application/pdf", as_attachment=False,
-                     download_name=fila["nombre_original"])
+    # La carta de terminación es Word; los demás documentos son PDF.
+    word = Path(fila["ruta_archivo"]).suffix.lower() == ".docx"
+    return send_file(
+        ruta, as_attachment=word, download_name=fila["nombre_original"],
+        mimetype=("application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                  if word else "application/pdf"))
 
 
 @jefe_bp.post("/api/jefe/documentos/<int:documento_id>/revisar")
@@ -632,7 +637,13 @@ def jefe_revisar_documento(documento_id):
             notificar(con, doc["alumno_id"],
                       f"Su documento \"{nombre}\" tiene observaciones: {texto}")
         else:
-            notificar(con, doc["alumno_id"], f"Su documento \"{nombre}\" fue validado")
+            mensaje = f"Su documento \"{nombre}\" fue validado"
+            if doc["tipo"] == "REPORTE_BIMESTRAL":
+                servicio = _servicio(con, doc["servicio_id"])
+                mensaje += (f". Se acumularon {HORAS_POR_REPORTE} horas de servicio social "
+                            f"(total: {horas_acumuladas(con, doc['servicio_id'])} de "
+                            f"{servicio['horas_requeridas']}).")
+            notificar(con, doc["alumno_id"], mensaje)
             if doc["tipo"] in ("MEMORIA_FINAL", "CARTA_TERMINACION"):
                 notificar_rol(con, "JEFE_VINCULACION",
                               f"El documento \"{nombre}\" del alumno (servicio "
@@ -642,7 +653,8 @@ def jefe_revisar_documento(documento_id):
                            f"Documento ID {documento_id}: {nuevo}")
     mensaje = "Documento validado" if accion == "VALIDAR" else "Observaciones enviadas al alumno"
     if concluido:
-        mensaje += ". El servicio social quedó CONCLUIDO; Vinculación puede emitir la constancia."
+        mensaje += (". El servicio social quedó CONCLUIDO; Vinculación ya puede subir "
+                    "la carta de terminación.")
     return jsonify({"ok": True, "mensaje": mensaje, "concluido": concluido})
 
 
@@ -666,9 +678,7 @@ def jefe_listar_servicios():
             f"""SELECT s.id, s.estatus, s.fecha_inicio, s.fecha_fin, s.horas_requeridas,
                        s.plan_id, u.identificador, {NOMBRE_SQL} AS alumno_nombre,
                        a.carrera, a.plan_estudios, p.id AS programa_id, p.nombre AS programa,
-                       p.origen, e.nombre AS empresa,
-                       COALESCE((SELECT SUM(h.horas) FROM registro_horas h
-                                 WHERE h.servicio_id = s.id), 0) AS horas_acumuladas
+                       p.origen, e.nombre AS empresa
                 FROM servicios_sociales s
                 JOIN usuarios u ON u.id = s.alumno_id
                 JOIN alumnos a ON a.usuario_id = s.alumno_id
@@ -776,16 +786,19 @@ def jefe_baja_servicio(servicio_id):
 @jefe_bp.get("/api/jefe/servicios/<int:servicio_id>/horas")
 @login_requerido(JEFE)
 def jefe_listar_horas(servicio_id):
+    """RF-08: las horas se acumulan por reporte bimestral validado (160 c/u)."""
     with closing(conectar()) as con:
         s = _servicio(con, servicio_id)
         if not s:
             return error("Servicio social no encontrado", 404)
         filas = con.execute(
-            f"""SELECT h.id, h.fecha, h.horas, {NOMBRE_SQL} AS registrada_por,
-                       h.creado_en
-                FROM registro_horas h JOIN usuarios u ON u.id = h.registrada_por
-                WHERE h.servicio_id = ? ORDER BY h.fecha DESC, h.id DESC""",
-            (servicio_id,)).fetchall()
+            """SELECT d.id, d.numero_reporte, d.version, d.revisado_en AS fecha,
+                      ? AS horas
+               FROM documentos d
+               WHERE d.servicio_id = ? AND d.tipo = 'REPORTE_BIMESTRAL'
+                 AND d.estatus = 'VALIDADO'
+               ORDER BY d.numero_reporte""",
+            (HORAS_POR_REPORTE, servicio_id)).fetchall()
         resumen = avance_horas(con, s)
     return jsonify({"horas": [dict(f) for f in filas], **resumen})
 
@@ -793,32 +806,9 @@ def jefe_listar_horas(servicio_id):
 @jefe_bp.post("/api/jefe/servicios/<int:servicio_id>/horas")
 @login_requerido(JEFE)
 def jefe_registrar_horas(servicio_id):
-    d = _datos()
-    fecha = str(d.get("fecha", date.today().isoformat())).strip()
-    horas = _entero(d.get("horas"), minimo=1, maximo=24)
-    if err := validar_fecha(fecha, "fecha"):
-        return error(err, 400)
-    if horas is None:
-        return error("Las horas deben ser un número entero entre 1 y 24", 400)
-
-    with transaccion() as con:
-        s = _servicio(con, servicio_id)
-        if not s:
-            return error("Servicio social no encontrado", 404)
-        if s["estatus"] != "ACTIVO":
-            return error("Solo se registran horas de un servicio activo", 409)
-        con.execute(
-            "INSERT INTO registro_horas (servicio_id, fecha, horas, registrada_por) "
-            "VALUES (?, ?, ?, ?)", (servicio_id, fecha, horas, session["usuario_id"]))
-        total = horas_acumuladas(con, servicio_id)
-        notificar(con, s["alumno_id"],
-                  f"Se registraron {horas} hora(s) de servicio social. "
-                  f"Acumulado: {total} de {s['horas_requeridas']}.")
-        concluido = quizas_concluir(con, servicio_id)
-        registrar_bitacora(con, session["usuario_id"], "REGISTRAR_HORAS",
-                           f"Servicio {servicio_id}: +{horas} horas")
-    return jsonify({"ok": True, "mensaje": "Horas registradas correctamente",
-                    "horas_acumuladas": total, "concluido": concluido})
+    """Las horas ya no se capturan a mano: dependen del reporte validado."""
+    return error("Las horas se acumulan automáticamente: 160 horas por cada reporte "
+                 "bimestral validado. Valide el reporte del alumno para sumar sus horas.", 409)
 
 
 # ==================================== Periodos de entrega (RF-09, globales)
@@ -826,7 +816,7 @@ def jefe_registrar_horas(servicio_id):
 DOCUMENTOS_PERIODO = (("CARTA_PRESENTACION", 0), ("SOLICITUD", 0),
                       ("CARTA_ACEPTACION", 0), ("REPORTE_BIMESTRAL", 1),
                       ("REPORTE_BIMESTRAL", 2), ("REPORTE_BIMESTRAL", 3),
-                      ("MEMORIA_FINAL", 0), ("CARTA_TERMINACION", 0))
+                      ("MEMORIA_FINAL", 0))
 
 
 def _estado_periodo(fila, hoy):

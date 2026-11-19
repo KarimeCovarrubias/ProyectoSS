@@ -39,7 +39,7 @@ async function cargarDocumentos() {
             ver.target = '_blank';
             ver.rel = 'noopener';
             ver.className = 'btn-secundario';
-            ver.textContent = 'Ver PDF';
+            ver.textContent = 'Ver';
             tdAcciones.appendChild(ver);
             if (d.estatus === 'PENDIENTE') {
                 tdAcciones.append(crearBoton('Validar', 'btn-guardar', () => validarDocumento(d)),

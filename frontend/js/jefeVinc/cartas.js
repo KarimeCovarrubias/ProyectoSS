@@ -1,5 +1,5 @@
-// Cartas de terminación firmadas (Jefe de Vinculación).
-// Lista los servicios concluidos y permite subir / reemplazar la carta en PDF.
+// Cartas de terminación (Jefe de Vinculación).
+// Lista los expedientes ya validados y permite subir / reemplazar el Word.
 // Los textos se ponen con textContent (nunca innerHTML).
 
 const $ = (id) => document.getElementById(id);
@@ -22,9 +22,9 @@ function celda(texto) {
 }
 
 // Validación en el navegador (el servidor la repite: RNF-07)
-function validarPdf(archivo) {
-    if (!archivo.name.toLowerCase().endsWith('.pdf')) {
-        return 'Archivo no válido: solo se aceptan archivos .pdf';
+function validarWord(archivo) {
+    if (!archivo.name.toLowerCase().endsWith('.docx')) {
+        return 'Archivo no válido: solo se aceptan documentos Word (.docx)';
     }
     if (archivo.size > MAX_BYTES) {
         return 'Archivo no válido: el tamaño máximo es 5 MB';
@@ -33,7 +33,7 @@ function validarPdf(archivo) {
 }
 
 async function subirCarta(servicio, archivo, boton) {
-    const problema = validarPdf(archivo);
+    const problema = validarWord(archivo);
     if (problema) {
         mostrarMensaje(problema, 'error');
         return;
@@ -41,8 +41,8 @@ async function subirCarta(servicio, archivo, boton) {
     const pregunta = servicio.documento_id
         ? `${servicio.nombre} ya tiene una carta. ¿Reemplazarla con "${archivo.name}"?\n` +
           'El alumno verá la nueva versión.'
-        : `¿Subir la carta de terminación firmada de ${servicio.nombre}?\n` +
-          `Archivo: ${archivo.name}\nEl alumno podrá descargarla.`;
+        : `¿Subir la carta de terminación en Word (editable) de ${servicio.nombre}?\n` +
+          `Archivo: ${archivo.name}\nEl alumno la descargará, la firmará y subirá el PDF.`;
     if (!confirm(pregunta)) return;
 
     const datos = new FormData();
@@ -84,7 +84,7 @@ function filaServicio(s) {
 
     const entrada = document.createElement('input');      // selector de archivo oculto
     entrada.type = 'file';
-    entrada.accept = '.pdf,application/pdf';
+    entrada.accept = '.docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document';
     entrada.hidden = true;
 
     const boton = document.createElement('button');
@@ -105,7 +105,7 @@ function filaServicio(s) {
         ver.href = `/api/documentos/${s.documento_id}/archivo`;
         ver.target = '_blank';
         ver.rel = 'noopener';
-        ver.textContent = 'Ver';
+        ver.textContent = 'Descargar';
         contenedor.appendChild(ver);
     }
     tdAcciones.appendChild(contenedor);
@@ -131,7 +131,7 @@ async function cargarServicios() {
         cuerpo.replaceChildren();
         if (datos.servicios.length === 0) {
             const fila = document.createElement('tr');
-            const td = celda('No hay alumnos con servicio concluido que coincidan.');
+            const td = celda('No hay alumnos con expediente validado que coincidan.');
             td.colSpan = 7;
             td.className = 'texto-vacio';
             fila.appendChild(td);
