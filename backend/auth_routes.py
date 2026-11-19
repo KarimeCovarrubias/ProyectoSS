@@ -13,7 +13,7 @@ MAX_INTENTOS = 3
 MINUTOS_BLOQUEO = 15
 FORMATO_FECHA = "%Y-%m-%d %H:%M:%S"
 
-
+# Inicio de sesión con bloqueo por intentos fallidos
 @auth_bp.post("/api/login")
 def login():
     datos = request.get_json(silent=True) or {}
@@ -38,7 +38,7 @@ def login():
                 return error(f"Cuenta bloqueada temporalmente. Intente de nuevo en {minutos} minuto(s)", 423)
 
         # Los alumnos usan su CURP como contraseña (la capturan en el Forms externo).
-        # Se toleran minúsculas y espacios accidentales al escribirla.
+
         candidatas = [contrasena]
         if fila["rol"] == "ALUMNO":
             candidatas.append(contrasena.strip().upper())
@@ -70,7 +70,7 @@ def login():
             sid=uuid.uuid4().hex,
             usuario_id=fila["id"],
             identificador=fila["identificador"],
-            nombre=nombre,                       # nombre completo, para mostrar
+            nombre=nombre,                       
             rol=fila["rol"],
         )
         debe_cambiar = bool(fila["debe_cambiar_password"])
@@ -104,10 +104,7 @@ def logout():
 @login_requerido()
 def sesion_actual():
     with closing(conectar()) as con:
-        fila = con.execute(
-            """SELECT id, identificador, nombre, apellido_paterno, apellido_materno,
-                      correo, rol, activo, debe_cambiar_password
-               FROM usuarios WHERE id = ?""", (session["usuario_id"],)).fetchone()
+        fila = con.execute( (session["usuario_id"],)).fetchone()
     if fila is None or not fila["activo"]:
         session.clear()
         return error("Su sesión ya no es válida. Vuelva a iniciar sesión.", 401)

@@ -19,13 +19,13 @@ from backend.validaciones import (
 )
 
 admin_bp = Blueprint("admin_bp", __name__)
-
+# Límite de 5 MB para no saturar el servidor si suben un archivo muy pesado
 MAX_BYTES_ARCHIVO = 5 * 1024 * 1024
-# SQL para armar el nombre completo (nombre + apellidos) de la tabla usuarios
+# Atajo de SQL para juntar nombre y apellidos limpios sin espacios extras
 NOMBRE_SQL = "trim(u.nombre || ' ' || u.apellido_paterno || ' ' || u.apellido_materno)"
 
 
-# ===================================================================== Resumen
+# Resumen de métricas para la pantalla de inicio del admin
 @admin_bp.get("/api/admin/resumen")
 @login_requerido("ADMINISTRADOR")
 def admin_resumen():
@@ -52,7 +52,7 @@ def admin_resumen():
     })
 
 
-# ================================================================ Usuarios (lista)
+# Lista de usuarios con paginador y filtros de búsqueda
 @admin_bp.get("/api/admin/usuarios")
 @login_requerido("ADMINISTRADOR")
 def admin_listar_usuarios():
@@ -108,15 +108,9 @@ def admin_listar_usuarios():
     return jsonify({"usuarios": usuarios, "pagina": pagina, "paginas": paginas, "total": total})
 
 
-# ======================================== Crear usuarios (personal y alumnos) CU02
+# Registro manual de usuarios (personal o alumnos)
 def _crear_alumno(d, nombre, ap_pat, ap_mat, control):
-    """Alta manual de un alumno (lo normal es importar el Forms).
 
-    Crea el usuario con rol ALUMNO y su fila en ``alumnos``. El correo es el
-    institucional que se arma con el número de control y la contraseña inicial
-    es la CURP capturada (igual que en la importación del Forms). Los datos
-    académicos (plan y créditos) se capturan después con "Datos académicos".
-    """
     curp = str(d.get("curp", "")).strip().upper()
     carrera = str(d.get("carrera", "")).strip()
     telefono = re.sub(r"\D", "", str(d.get("telefono", "")))
@@ -142,14 +136,11 @@ def _crear_alumno(d, nombre, ap_pat, ap_mat, control):
         if con.execute("SELECT 1 FROM alumnos WHERE curp = ?", (curp,)).fetchone():
             return error("La CURP ya está registrada con otro número de control", 400)
         usuario_id = con.execute(
-            """INSERT INTO usuarios (identificador, nombre, apellido_paterno, apellido_materno,
-                                     correo, password_hash, rol, debe_cambiar_password)
-               VALUES (?, ?, ?, ?, ?, ?, 'ALUMNO', 0)""",
+
             (control, nombre, ap_pat, ap_mat, correo,
              generate_password_hash(curp))).lastrowid
         con.execute(
-            """INSERT INTO alumnos (usuario_id, curp, carrera, semestre, telefono, domicilio)
-               VALUES (?, ?, ?, ?, ?, ?)""",
+           
             (usuario_id, curp, carrera, semestre, telefono or None, domicilio or None))
         registrar_bitacora(con, session["usuario_id"], "ALTA_USUARIO",
                            f"Alumno registrado manualmente: {control}")
@@ -192,16 +183,14 @@ def admin_crear_usuario():
                        (identificador, correo)).fetchone():
             return error("El usuario (número de empleado) o el correo ya se encuentra registrado", 400)
         con.execute(
-            """INSERT INTO usuarios (identificador, nombre, apellido_paterno, apellido_materno,
-                                     correo, password_hash, rol, debe_cambiar_password)
-               VALUES (?, ?, ?, ?, ?, ?, ?, 1)""",
+           
             (identificador, nombre, ap_pat, ap_mat, correo, generate_password_hash(password), rol))
         registrar_bitacora(con, session["usuario_id"], "ALTA_USUARIO",
                            f"Usuario creado: {identificador} ({rol})")
     return jsonify({"ok": True, "mensaje": "Usuario registrado correctamente"})
 
 
-# ======================================================= Importar Excel del Forms
+# Carga de alumnos desde el archivo Excel del Forms
 COLUMNAS_FORMS = [
     ("apellido_paterno", ("paterno",)),
     ("apellido_materno", ("materno",)),
@@ -232,7 +221,7 @@ def _texto(valor):
 
 
 def _mapear_columnas(encabezados):
-    """Devuelve {campo: índice de columna}. Tolera acentos, mayúsculas y columnas extra de Forms."""
+
     mapa, norm_elegida = {}, {}
     for i, enc in enumerate(encabezados):
         norm = _normalizar(enc)
@@ -327,9 +316,7 @@ def admin_importar_alumnos():
             if existente:
                 if existente["rol"] == "ALUMNO":
                     con.execute(
-                        "INSERT INTO asistencias_induccion (curso_id, alumno_id, forms_completos) "
-                        "VALUES (?, ?, 1) ON CONFLICT(curso_id, alumno_id) DO UPDATE SET "
-                        "forms_completos = 1", (curso_id, existente["id"]))
+                        (curso_id, existente["id"]))
                     omitir("Ya estaba registrado (se registró su asistencia a este curso)")
                 else:
                     omitir("El número ya pertenece a otro tipo de usuario")
@@ -341,14 +328,11 @@ def admin_importar_alumnos():
             # El alumno entra con su CURP como contraseña (viene capturada en el Forms).
             password = curp
             usuario_id = con.execute(
-                """INSERT INTO usuarios (identificador, nombre, apellido_paterno, apellido_materno,
-                                         correo, password_hash, rol, debe_cambiar_password)
-                   VALUES (?, ?, ?, ?, ?, ?, 'ALUMNO', 0)""",
+                
                 (control, nombre, ap_pat, ap_mat, correo_de_alumno(control),
                  generate_password_hash(password))).lastrowid
             con.execute(
-                """INSERT INTO alumnos (usuario_id, curp, carrera, semestre, telefono, domicilio)
-                   VALUES (?, ?, ?, ?, ?, ?)""",
+                
                 (usuario_id, curp, carrera, semestre, telefono or None, domicilio or None))
             con.execute(
                 "INSERT INTO asistencias_induccion (curso_id, alumno_id, forms_completos) VALUES (?, ?, 1)",
@@ -368,9 +352,9 @@ def admin_importar_alumnos():
                     "credenciales": credenciales})
 
 
-# ======================================= Datos académicos del alumno (plan, créditos)
+# Guarda el archivo subido en una carpeta protegida y regresa su ruta relativa
 def _guardar_archivo(archivo, subcarpeta, prefijo, extensiones):
-    """Guarda un archivo subido fuera de la carpeta pública. Devuelve (ruta_relativa, error)."""
+
     nombre = archivo.filename or ""
     ext = Path(nombre).suffix.lower()
     if ext not in extensiones:
@@ -419,16 +403,14 @@ def admin_datos_academicos(alumno_id):
             foto = boleta = None
 
         con.execute(
-            """UPDATE alumnos SET plan_estudios = ?, creditos = ?, porcentaje_creditos = ?,
-                                  foto_infantil = ?, boleta_extraescolares = ?
-               WHERE usuario_id = ?""",
+           
             (plan, creditos, calcular_porcentaje_creditos(creditos), foto, boleta, alumno_id))
         registrar_bitacora(con, session["usuario_id"], "DATOS_ACADEMICOS",
                            f"Alumno ID {alumno_id}: plan {plan}, {creditos} créditos")
     return jsonify({"ok": True, "mensaje": "Datos académicos guardados correctamente"})
 
 
-# ====================================================== Estado y contraseña (cuentas)
+# Modificar estado de la cuenta activo/inactivo
 @admin_bp.patch("/api/admin/usuarios/<int:usuario_id>/estado")
 @login_requerido("ADMINISTRADOR")
 def admin_cambiar_estado_usuario(usuario_id):
@@ -447,29 +429,24 @@ def admin_cambiar_estado_usuario(usuario_id):
                            f"Usuario: {fila['identificador']}")
     return jsonify({"ok": True})
 
-
+# En lugar de mandar correo de recuperación genera una clave temporal.
+# Si es alumno, se la resetea directo a su CURP.
 @admin_bp.post("/api/admin/usuarios/<int:usuario_id>/restablecer-password")
 @login_requerido("ADMINISTRADOR")
 def admin_restablecer_password(usuario_id):
-    """Sustituye a 'recuperar contraseña' (no hay servidor de correo): genera una temporal.
-
-    En el caso de los alumnos, la contraseña se restablece a su CURP, que es la
-    que usan para entrar.
-    """
+   
     if session["usuario_id"] == usuario_id:
         return error("Use 'Cambiar contraseña' para su propia cuenta", 400)
     with transaccion() as con:
         fila = con.execute(
-            """SELECT u.identificador, u.rol, a.curp FROM usuarios u
-               LEFT JOIN alumnos a ON a.usuario_id = u.id WHERE u.id = ?""",
+     
             (usuario_id,)).fetchone()
         if not fila:
             return error("Usuario no encontrado", 404)
         es_alumno = fila["rol"] == "ALUMNO" and fila["curp"]
         nueva = fila["curp"] if es_alumno else generar_password()
         con.execute(
-            """UPDATE usuarios SET password_hash = ?, debe_cambiar_password = ?,
-                                   intentos_fallidos = 0, bloqueado_hasta = NULL WHERE id = ?""",
+
             (generate_password_hash(nueva), 0 if es_alumno else 1, usuario_id))
         registrar_bitacora(con, session["usuario_id"], "RESTABLECER_PASSWORD",
                            f"Usuario: {fila['identificador']}"

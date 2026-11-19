@@ -1,4 +1,4 @@
-"""Rutas del Alumno (CU03..CU07, RF-05..RF-09, RF-16, RF-17)."""
+# Rutas para todo lo que hace el alumno en su portal de servicio social
 from __future__ import annotations
 
 import io
@@ -33,7 +33,7 @@ TIPOS_DOCUMENTO = ("CARTA_PRESENTACION", "SOLICITUD", "CARTA_ACEPTACION",
                    "REPORTE_BIMESTRAL", "MEMORIA_FINAL", "CARTA_TERMINACION")
 
 
-# ------------------------------------------------------------------ utilidades
+# Funciones de apoyo y utilidades
 def _alumno(con, uid):
     return con.execute(
         "SELECT u.id, u.identificador, u.nombre, u.apellido_paterno, u.apellido_materno, "
@@ -43,7 +43,7 @@ def _alumno(con, uid):
 
 
 def _servicio_actual(con, uid):
-    """Servicio más reciente que no esté dado de baja (aunque ya haya concluido)."""
+
     return con.execute(
         "SELECT * FROM servicios_sociales WHERE alumno_id = ? AND estatus <> 'BAJA' "
         "ORDER BY id DESC LIMIT 1", (uid,)).fetchone()
@@ -60,7 +60,7 @@ def _datos_programa(con, servicio):
 
 
 def _bloqueo_solicitud(con, uid):
-    """Motivo por el que el alumno aún NO puede elegir programa (o None)."""
+    
     a = con.execute("SELECT plan_estudios, creditos, porcentaje_creditos, semestre "
                     "FROM alumnos WHERE usuario_id = ?", (uid,)).fetchone()
     if not a:
@@ -87,9 +87,9 @@ def _bloqueo_solicitud(con, uid):
 MESES = ("enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto",
          "septiembre", "octubre", "noviembre", "diciembre")
 
-
+# Convierte fechas tipo 2026-12-07 a texto legible para los avisos del alumno
 def _fecha_larga(texto):
-    """'2026-12-07' -> '7 de diciembre de 2026' (para los mensajes al alumno)."""
+   
     try:
         f = date.fromisoformat(str(texto))
     except (TypeError, ValueError):
@@ -135,7 +135,7 @@ def _datos_docx(con, alumno, servicio, tipo, numero_reporte=0, folio=""):
     }
 
 
-# --------------------------------------------------------------------- perfil
+# Perfil y datos personales del alumno
 @alumno_bp.get("/api/alumno/perfil")
 @login_requerido("ALUMNO")
 def alumno_perfil():
@@ -208,7 +208,7 @@ def alumno_actualizar_perfil():
     return jsonify({"ok": True, "mensaje": "Datos actualizados correctamente"})
 
 
-# -------------------------------------------------------- banco / selección (CU06)
+# Consulta y selección de programas disponibles
 @alumno_bp.get("/api/programas/banco")
 @login_requerido("ALUMNO")
 def listar_banco_general():
@@ -318,7 +318,7 @@ def alumno_propuesta_propia():
     objetivo = str(d.get("objetivo", "")).strip() or None
     area = str(d.get("area_responsable", "")).strip() or None
 
-    # El responsable se captura con nombre y los dos apellidos.
+    # Separamos el nombre y apellidos del encargado si vienen juntos en un solo campo
     resp_nombre = str(d.get("responsable_nombre", "")).strip()
     resp_paterno = str(d.get("responsable_apellido_paterno", "")).strip()
     resp_materno = str(d.get("responsable_apellido_materno", "")).strip()
@@ -350,26 +350,19 @@ def alumno_propuesta_propia():
         plan = alumno["plan_estudios"] or "AMBOS"
         titular = nombre_completo(resp_nombre, resp_paterno, resp_materno)
 
-        # Cada propuesta guarda su propio responsable: nunca se reutiliza ni se
+        # Cada propuesta guarda su propio responsable nunca se reutiliza ni se
         # sobrescribe la fila de otra propuesta de la misma dependencia.
         empresa_id = con.execute(
-            """INSERT INTO empresas_receptoras (nombre, titular_nombre,
-                   titular_apellido_paterno, titular_apellido_materno, titular,
-                   domicilio, telefono)
-               VALUES (?, ?, ?, ?, ?, ?, ?)""",
+            
             (dependencia, resp_nombre, resp_paterno, resp_materno, titular,
              domicilio, telefono)).lastrowid
 
         programa_id = con.execute(
-            """INSERT INTO programas (tipo, origen, nombre, empresa_id, area_responsable,
-                   objetivo, actividades, horas, cupo, cupo_disponible, periodo, plan_estudios,
-                   estatus, propuesto_por)
-               VALUES ('PROPIA', ?, ?, ?, ?, ?, ?, 480, 1, 0, ?, ?, 'PENDIENTE', ?)""",
+
             (origen, nombre, empresa_id, area, objetivo, actividades, periodo, plan,
              uid)).lastrowid
         servicio_id = con.execute(
-            "INSERT INTO servicios_sociales (alumno_id, programa_id, estatus, horas_requeridas) "
-            "VALUES (?, ?, 'PENDIENTE', 480)", (uid, programa_id)).lastrowid
+             (uid, programa_id)).lastrowid
 
         notificar(con, uid, f"Su propuesta propia \"{nombre}\" quedó pendiente de validación "
                             "por la Oficina de Servicio Social.")
@@ -382,29 +375,18 @@ def alumno_propuesta_propia():
     return jsonify({"ok": True, "id": programa_id, "servicio_id": servicio_id,
                     "mensaje": "Propuesta propia enviada para revisión"})
 
-
+# Lista las propuestas que el mismo alumno registró y su estatus de revisión
 @alumno_bp.get("/api/alumno/mis-propuestas")
 @login_requerido("ALUMNO")
 def alumno_mis_propuestas():
-    """Propuestas propias del alumno con su dictamen (CU09, CU06)."""
+
     uid = session["usuario_id"]
     with transaccion() as con:
-        filas = con.execute(
-            """SELECT p.id, p.nombre, p.origen, p.actividades, p.periodo, p.horas,
-                      p.estatus, p.motivo_rechazo, p.validado_en, p.creado_en,
-                      e.nombre AS dependencia, e.titular, e.titular_nombre,
-                      e.titular_apellido_paterno, e.titular_apellido_materno,
-                      e.domicilio, e.telefono,
-                      ss.id AS servicio_id, ss.estatus AS servicio_estatus
-               FROM programas p
-               JOIN empresas_receptoras e ON e.id = p.empresa_id
-               LEFT JOIN servicios_sociales ss ON ss.programa_id = p.id
-               WHERE p.tipo = 'PROPIA' AND p.propuesto_por = ?
-               ORDER BY p.id DESC""", (uid,)).fetchall()
+        filas = con.execute( (uid,)).fetchall()
     return jsonify([dict(r) for r in filas])
 
 
-# ------------------------------------------------------------------- horas (RF-08)
+# Consulta de horas acumuladas del servicio
 @alumno_bp.get("/api/alumno/avance-horas")
 @login_requerido("ALUMNO")
 def alumno_avance_horas():
@@ -419,7 +401,7 @@ def alumno_avance_horas():
                         **avance_horas(con, s)})
 
 
-# ------------------------------------------------------------ documentos (CU07)
+# Gestión y entrega de documentos del expediente
 @alumno_bp.get("/api/alumno/documentos")
 @login_requerido("ALUMNO")
 def alumno_listar_documentos():
@@ -445,7 +427,7 @@ def alumno_listar_documentos():
                 "documento_id": r["id"] if r else None,
                 "version": r["version"] if r else None,
                 "subido_en": r["subido_en"] if r else None,
-                # Periodo de entrega definido por el Jefe de Oficina (RF-09).
+                # Periodo de entrega definido por el Jefe de Oficina
                 "fecha_inicio": periodo["fecha_inicio"],
                 "fecha_fin": periodo["fecha_fin"],
                 "abierto": periodo["abierto"],
@@ -454,12 +436,10 @@ def alumno_listar_documentos():
                 "plantilla": tipo in plantillas,
             })
 
-        # La carta de terminación la sube el Jefe de Vinculación en Word (editable);
-        # el alumno la descarga, la firma y sube el PDF. Se habilita cuando el
-        # expediente ya está validado (todos los documentos y las horas).
-        carta = carta_terminacion(con, s["id"])                 # Word del Jefe
-        habilitada = carta_terminacion_habilitada(con, s["id"])  # Word descargable
-        firmada = carta_firmada_alumno(con, s["id"], uid)        # PDF del alumno
+
+        carta = carta_terminacion(con, s["id"])                 
+        habilitada = carta_terminacion_habilitada(con, s["id"])  
+        firmada = carta_firmada_alumno(con, s["id"], uid)        
         observacion = None
         if firmada and firmada["estatus"] == "OBSERVADO":
             o = con.execute("SELECT texto FROM observaciones WHERE documento_id = ? "
@@ -485,11 +465,10 @@ def alumno_listar_documentos():
             "abierto": bool(habilitada),
             "motivo_bloqueo": None if habilitada else "DOCUMENTOS_PENDIENTES",
             "plantilla": False,
-            # Word editable que subió Vinculación (solo descarga).
+
             "carta_word_id": habilitada["id"] if habilitada else None,
             "puede_descargar": bool(habilitada),
-            # El alumno puede subir su PDF firmado cuando ya descargó el Word y
-            # aún no lo entrega o Vinculación lo observó para corregirlo.
+            
             "puede_subir": bool(habilitada) and (
                 not firmada or firmada["estatus"] == "OBSERVADO"),
             "firmada": bool(firmada and firmada["estatus"] == "VALIDADO"),
@@ -542,9 +521,7 @@ def alumno_subir_documento():
         if tipo == "CARTA_PRESENTACION" and not externo:
             return error("La carta de presentación solo se requiere en servicios externos", 400)
 
-        # RF-09: cada documento solo se puede subir dentro de su periodo global.
-        # La carta de terminación es la excepción: se rige por la validación del
-        # expediente y por la carta en Word que subió Vinculación.
+        
         if tipo == "CARTA_TERMINACION":
             if not listo_para_carta(con, servicio_id):
                 return error("La carta de terminación se habilita cuando todos sus "
@@ -582,28 +559,21 @@ def alumno_subir_documento():
             (servicio_id, tipo, numero_reporte)).fetchone()[0] or 0) + 1
         guardado, relativa = archivos.guardar(archivo, f"alumnos/{uid}")
 
-        # Solo se reemplazan las versiones del propio alumno: el Word que subió
-        # Vinculación se conserva para que el alumno lo pueda volver a descargar.
+
         con.execute("UPDATE documentos SET estatus = 'REEMPLAZADO' WHERE servicio_id = ? "
                     "AND tipo = ? AND numero_reporte = ? AND subido_por = ? "
                     "AND estatus <> 'REEMPLAZADO'",
                     (servicio_id, tipo, numero_reporte, uid))
         if tipo == "CARTA_TERMINACION":
-            # La carta firmada queda pendiente hasta que el Jefe de Vinculación
-            # la revise. Solo al validarla el servicio social se libera.
+
             con.execute(
-                """INSERT INTO documentos (servicio_id, tipo, numero_reporte, version,
-                       estatus, nombre_original, ruta_archivo, tamano_bytes, subido_por)
-                   VALUES (?, ?, ?, ?, 'PENDIENTE', ?, ?, ?, ?)""",
                 (servicio_id, tipo, numero_reporte, version, nombre_original,
                  relativa, tamano, uid))
             notificar(con, uid, "Su carta de terminación firmada fue recibida y quedó "
                                 "pendiente de validación por el Jefe de Vinculación.")
         else:
             con.execute(
-                """INSERT INTO documentos (servicio_id, tipo, numero_reporte, version, estatus,
-                       nombre_original, ruta_archivo, tamano_bytes, subido_por)
-                   VALUES (?, ?, ?, ?, 'PENDIENTE', ?, ?, ?, ?)""",
+
                 (servicio_id, tipo, numero_reporte, version, nombre_original,
                  relativa, tamano, uid))
         nombre_doc = TITULOS.get(tipo, tipo).split(" (")[0]
@@ -630,16 +600,11 @@ def alumno_subir_documento():
     return jsonify({"ok": True, "mensaje": "Documento subido correctamente"})
 
 
-# ------------------------------------- plantillas del Jefe (RF-06, sin fecha)
+# Plantillas Word oficiales del servicio social
 @alumno_bp.get("/api/alumno/plantillas/<tipo>/archivo")
 @login_requerido("ALUMNO")
 def alumno_descargar_plantilla(tipo):
-    """Descarga la plantilla Word del documento para llenarla y subirla en PDF.
-
-    La plantilla NO depende de las fechas: se puede descargar en cualquier
-    momento. Si ya hay plantilla subida por el Jefe de Oficina, se entrega con
-    los datos del alumno sustituidos; si no, se entrega tal cual.
-    """
+ 
     tipo = tipo.upper()
     if tipo not in TIPOS_DOCUMENTO:
         return error("Tipo de documento no válido", 400)
@@ -686,7 +651,7 @@ def alumno_descargar_plantilla(tipo):
         mimetype="application/vnd.openxmlformats-officedocument.wordprocessingml.document")
 
 
-# ------------------------------------------------------------ formatos Word (RF-06)
+# Generación de formatos Word automáticos
 @alumno_bp.get("/api/alumno/formatos/<tipo>")
 @login_requerido("ALUMNO")
 def alumno_formato_word(tipo):
@@ -733,7 +698,7 @@ def alumno_formato_word(tipo):
                      mimetype="application/vnd.openxmlformats-officedocument.wordprocessingml.document")
 
 
-# -------------------------------------------------------- inducción (CU03)
+# Curso de inducción y registro con QR
 @alumno_bp.get("/api/alumno/induccion")
 @login_requerido("ALUMNO")
 def alumno_induccion():
@@ -814,7 +779,7 @@ def alumno_induccion_forms():
     return jsonify({"ok": True, "mensaje": "Curso de inducción registrado correctamente"})
 
 
-# ---------------------------------------------------------- baja del alumno (RF-16)
+# Trámite de baja del servicio social
 @alumno_bp.post("/api/alumno/baja")
 @login_requerido("ALUMNO")
 def alumno_baja_servicio():
@@ -841,7 +806,7 @@ def alumno_baja_servicio():
     return jsonify({"ok": True, "mensaje": "Servicio social dado de baja"})
 
 
-# ------------------------------------------------------------ notificaciones
+# Notificaciones del usuario
 @alumno_bp.get("/api/notificaciones")
 @login_requerido()
 def listar_notificaciones():

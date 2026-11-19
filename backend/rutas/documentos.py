@@ -1,4 +1,4 @@
-"""Ver / descargar documentos guardados (los archivos NO son públicos: RNF-01, RNF-03)."""
+# Rutas para consultar o descargar documentos protegidos del sistema
 from contextlib import closing
 from pathlib import Path
 
@@ -20,12 +20,6 @@ bp = Blueprint("documentos", __name__, url_prefix="/api")
 @bp.get("/documentos/<int:documento_id>/archivo")
 @login_requerido("ALUMNO", "JEFE_OFICINA_SS", "JEFE_VINCULACION", "ADMINISTRADOR")
 def ver_documento(documento_id):
-    """Abre el PDF en el navegador, o lo descarga con ?descargar=1.
-
-    Permisos (RNF-03): el alumno solo ve SUS documentos; el Jefe de Oficina de SS ve
-    los documentos del trámite; el Jefe de Vinculación solo la carta de terminación.
-    La carta de terminación (Word) el alumno solo puede descargarla cuando ya tiene
-    todos sus documentos validados."""
     with closing(conectar()) as con:
         doc = con.execute(
             "SELECT d.tipo, d.nombre_original, d.ruta_archivo, d.estatus, d.servicio_id, "
@@ -62,15 +56,10 @@ def ver_documento(documento_id):
     respuesta.headers["X-Content-Type-Options"] = "nosniff"
     return respuesta
 
-
+# Consulta si el alumno ya tiene liberados y validados todos sus documentos para poder descargar su carta
 @bp.get("/mi-carta-terminacion")
 @login_requerido("ALUMNO")
 def mi_carta_terminacion():
-    """Para la página del alumno: ¿ya puede descargar su carta de terminación?
-
-    Solo se habilita cuando el alumno subió todos sus documentos y la Oficina de
-    Servicio Social ya los validó (y Vinculación subió la carta en Word).
-    """
     with closing(conectar()) as con:
         servicio = con.execute(
             "SELECT id FROM servicios_sociales WHERE alumno_id = ? AND estatus <> 'BAJA' "

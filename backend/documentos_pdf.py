@@ -1,17 +1,15 @@
-"""Generación de reportes PDF sencillos sin dependencias externas.
+# Generador de reportes en PDF sin librerías pesadas 
 
-El proyecto solo usa ``python-docx``; para los reportes de la Oficina de
-Servicio Social se genera un PDF con las fuentes base de PDF (Helvetica), de
-modo que no hace falta instalar ``reportlab`` ni ninguna otra librería.
 
-El generador está pensado para tablas: títulos, resumen, encabezados de columna
-y filas con ajuste de texto, con salto de página automático.
-"""
+
+
+
+
 from __future__ import annotations
 
 from datetime import datetime
 
-ANCHO = 792.0          # carta horizontal (11 x 8.5 pulgadas, en puntos)
+ANCHO = 792.0     
 ALTO = 612.0
 MARGEN = 26.0
 
@@ -22,9 +20,9 @@ TAM_ENCABEZADO = 8.5
 ALTO_LINEA = 10.0
 PADDING = 4.0
 
-
+# Limpia caracteres raros para que el texto se imprima bien dentro del PDF
 def _texto_pdf(texto):
-    """Escapa un texto para usarlo dentro de un literal de cadena PDF."""
+
     limpio = str(texto or "").replace("\r", " ").replace("\n", " ").strip()
     return (limpio.replace("\\", "\\\\")
                    .replace("(", "\\(")
@@ -32,17 +30,13 @@ def _texto_pdf(texto):
 
 
 def _ancho_texto(texto, tam, negrita=False):
-    """Ancho aproximado (en puntos) de una cadena con Helvetica.
-
-    Se usa un factor conservador para que el texto nunca invada la columna
-    vecina; no se requiere una métrica exacta para un reporte tabular.
-    """
+  
     factor = 0.60 if negrita else 0.56
     return len(str(texto or "")) * tam * factor
 
 
 def _partir_palabra(palabra, ancho, tam, negrita):
-    """Divide una palabra demasiado larga para que quepa en el ancho dado."""
+
     partes, actual = [], ""
     for letra in palabra:
         candidato = actual + letra
@@ -57,7 +51,7 @@ def _partir_palabra(palabra, ancho, tam, negrita):
 
 
 def _envolver(texto, ancho, tam=TAM_TEXTO, negrita=False):
-    """Devuelve las líneas necesarias para que ``texto`` quepa en ``ancho``."""
+
     palabras = str(texto or "").split()
     if not palabras:
         return [""]
@@ -109,7 +103,7 @@ class _Pagina:
 
 
 class Reporte:
-    """Construye un PDF tabular con encabezado institucional y paginación."""
+
 
     def __init__(self, titulo, subtitulo="", resumen=None, nota=""):
         self.titulo = titulo
@@ -121,7 +115,8 @@ class Reporte:
         self.y = 0.0
         self.generado_en = datetime.now()
 
-    # ------------------------------------------------------------ páginas
+       
+    # Control de hojas y saltos de página
     def _nueva_pagina(self, primera=False):
         pagina = _Pagina()
         self.paginas.append(pagina)
@@ -169,13 +164,9 @@ class Reporte:
     def _salto(self):
         self._nueva_pagina()
 
-    # ------------------------------------------------------------- tabla
+    # Dibujo de la tabla con renglones alternados
     def tabla(self, columnas, filas):
-        """Dibuja una tabla.
-
-        ``columnas`` es una lista de ``(título, ancho, clave)`` y ``filas`` una
-        lista de diccionarios. Si no hay filas se muestra un aviso centrado.
-        """
+     
         x0 = MARGEN
         ancho_total = sum(c[1] for c in columnas)
         alto_encabezado = 20.0
@@ -250,9 +241,9 @@ class Reporte:
                                   color=(0.35, 0.35, 0.35))
                 self.y -= 11
 
-    # ------------------------------------------------------------- salida
+    # Genera la estructura en bytes del PDF listo para descargarse
     def guardar(self):
-        """Devuelve los bytes del PDF."""
+       
         if not self.paginas:
             self._nueva_pagina(primera=True)
 
@@ -310,7 +301,7 @@ class Reporte:
 
 
 def generar_pdf_tabla(titulo, subtitulo, columnas, filas, resumen=None, nota=""):
-    """Atajo: crea el reporte, dibuja la tabla y devuelve los bytes del PDF."""
+
     reporte = Reporte(titulo, subtitulo, resumen=resumen, nota=nota)
     reporte._nueva_pagina(primera=True)
     reporte.tabla(columnas, filas)

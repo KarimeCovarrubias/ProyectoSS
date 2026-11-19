@@ -1,31 +1,27 @@
-"""Archivos subidos: se guardan en SistemaSS/uploads, FUERA de frontend (RNF-01).
-Solo se pueden ver a través de rutas protegidas por rol."""
+# Manejo y subida de archivos del sistema
+# Se guardan en una carpeta privada  para que nadie acceda directo por URL sin permisos
 import os
 import uuid
 from pathlib import Path
 
-# backend/rutas/archivos.py -> parents[2] = SistemaSS
+# Ruta base a la carpeta uploads en la raíz del proyecto
 UPLOADS = Path(__file__).resolve().parents[2] / "uploads"
 
-
+# Mide el tamaño del archivo en bytes y regresa el puntero al inicio para poder leerlo después
 def tamano(archivo):
-    """Tamaño en bytes de un archivo recibido (sin consumirlo)."""
     archivo.stream.seek(0, os.SEEK_END)
     total = archivo.stream.tell()
     archivo.stream.seek(0)
     return total
 
-
+# Revisa la cabecera para asegurar que sea un PDF real y no solo la extensión cambiada
 def es_pdf(archivo):
-    """Revisa que el contenido sea realmente un PDF, no solo que termine en .pdf."""
     cabecera = archivo.stream.read(5)
     archivo.stream.seek(0)
     return cabecera == b"%PDF-"
 
-
+# Guarda el archivo con un UUID para no sobreescribir archivos ni guardar nombres con caracteres raros
 def guardar(archivo, subcarpeta, extension=".pdf"):
-    """Guarda con un nombre generado (nunca el que manda el usuario).
-    Devuelve (ruta_completa, ruta_relativa_para_la_BD)."""
     carpeta = UPLOADS / subcarpeta
     carpeta.mkdir(parents=True, exist_ok=True)
     nombre = uuid.uuid4().hex + extension
@@ -33,9 +29,8 @@ def guardar(archivo, subcarpeta, extension=".pdf"):
     archivo.save(destino)
     return destino, f"{subcarpeta}/{nombre}"
 
-
+# Valida que la ruta no intente salirse de la carpeta
 def ruta_segura(relativa):
-    """Convierte la ruta guardada en la BD en una ruta real, solo si queda dentro de uploads."""
     if not relativa:
         return None
     destino = (UPLOADS / relativa).resolve()
@@ -43,8 +38,7 @@ def ruta_segura(relativa):
         return None
     return destino
 
-
+# Convierte la ruta absoluta en una ruta relativa limpia con '/' para guardarla en la base de datos
 def ruta_para_bd(ruta_completa):
-    """Ruta relativa (dentro de uploads) para guardar en la base de datos."""
     completa = Path(ruta_completa).resolve()
     return str(completa.relative_to(UPLOADS.resolve())).replace("\\", "/")
