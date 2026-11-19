@@ -55,7 +55,7 @@ async function agregarUsuario(evento) {
         correo: $('correo').value.trim(),
         password: $('password').value
     };
-    if (datos.rol === 'ALUMNO') {          // caso especial: alta manual de un alumno
+    if (datos.rol === 'ALUMNO') {
         datos.curp = $('alumno-curp').value.trim().toUpperCase();
         datos.carrera = $('alumno-carrera').value.trim();
         datos.semestre = $('alumno-semestre').value;
